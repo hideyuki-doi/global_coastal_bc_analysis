@@ -1,0 +1,32 @@
+Ecosystem,Genus,Species (n),Records (n),Genus-only records (n)
+Seagrass,Zostera,13,339,25
+,Halophila,11,153,8
+,Posidonia,7,103,2
+,Cymodocea,2,42,2
+,Halodule,4,42,3
+,Thalassia,2,40,1
+,Syringodium,2,24,1
+,Enhalus,1,22,2
+,Phyllospadix,3,12,5
+,Subtotal (9 genera),45,777,49
+,,,,
+Mangrove,Avicennia,6,205,22
+,Rhizophora,7,192,12
+,Bruguiera,6,111,4
+,Lumnitzera,2,82,4
+,Laguncularia,1,78,3
+,Sonneratia,4,65,8
+,Ceriops,4,62,4
+,Nypa,1,7,0
+,Kandelia,2,6,2
+,Subtotal (9 genera),33,808,59
+,,,,
+Kelp,Laminaria,8,183,44
+,Saccharina,1,108,38
+,Ecklonia,1,51,13
+,Macrocystis,1,46,10
+,Undaria,1,36,1
+,Durvillaea,2,27,22
+,Lessonia,1,4,3
+,Subtotal (7 genera),15,455,131
+Total,25 genera,93,2040,239

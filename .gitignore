@@ -1,0 +1,25 @@
+# Large third-party datasets — fetched by scripts/get_external_data.sh
+HydroRIVERS_v10_shp/
+wc2.1_30s_elev.tif
+sdm_data/
+ocean_tides*
+EOT20*
+
+# Caches written by the pipeline
+output/world_grid_overwater.rds
+output/overwater_dist*.tif
+*.tif
+!output/**/*.png
+
+# Upstream occurrence table (produced before this repository)
+bc_analysis.rds
+
+# R session cruft
+.Rproj.user/
+.Rhistory
+.RData
+.Ruserdata
+*.Rproj
+
+# macOS
+.DS_Store
