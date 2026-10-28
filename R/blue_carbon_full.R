@@ -75,6 +75,38 @@ theme_pub <- function(base_size = 10) {
   )
 }
 
+# ── Distance to the river mouth: functional form ─────────────────────────────
+# Three candidate transforms, all decreasing in river influence:
+#   log_dist  log10(d + 1)       used throughout v1; steepest near the mouth
+#   inv_dist  1 / (d + 1)        concentration under 2-D radial dilution of a
+#                                point source, which is what a plume is
+#   exp_dist  exp(-d / L_PLUME)  plume decay — the form the flow-regulation
+#                                scenarios in PART 7 already assume
+# v1 was internally inconsistent here: the SDM used log_dist while the scenarios
+# perturbed distance through exp(-d / L). Declaring the set makes the choice
+# explicit, lets the data decide (R/02_reviewer_analyses.R compares all three
+# under spatial-block CV), and lets the SDM and the scenarios share one form.
+L_PLUME   <- 50          # km — plume decay length, as used by PART 7
+DIST_VAR  <- "log_dist"  # active transform; see R/02_reviewer_analyses.R
+
+add_dist_forms <- function(d) {
+  d$log_dist <- log10(d$dist_km + 1)
+  d$inv_dist <- 1 / (d$dist_km + 1)
+  d$exp_dist <- exp(-d$dist_km / L_PLUME)
+  d
+}
+
+# Back-transform for whichever form is active, so the response-curve figures
+# follow DIST_VAR instead of hard-coding log10.
+dist_to_km <- function(v, form = DIST_VAR) switch(form,
+  log_dist = 10^v - 1,
+  inv_dist = 1 / v - 1,
+  exp_dist = -L_PLUME * log(v))
+km_to_dist <- function(km, form = DIST_VAR) switch(form,
+  log_dist = log10(km + 1),
+  inv_dist = 1 / (km + 1),
+  exp_dist = exp(-km / L_PLUME))
+
 save_fig <- function(p, name, w, h) {
   ggsave(file.path(OUT_DIR, paste0(name, ".pdf")), p,
          width = w, height = h, units = "mm", device = cairo_pdf)
@@ -142,6 +174,14 @@ if ("NEXT_DOWN" %in% names(rivers)) {
     .outlets$UPLAND_SKM else 0
   river_mouths$ORD_FLOW   <- if ("ORD_FLOW" %in% names(.outlets))
     .outlets$ORD_FLOW else NA_integer_
+  # DIS_AV_CMS — HydroRIVERS long-term average discharge at the outlet (m³/s).
+  # Discharge measures freshwater and dissolved-load delivery better than
+  # catchment area does, because it already integrates area with the
+  # catchment's runoff: a large arid or sparsely vegetated basin is correctly
+  # down-weighted against a small wet one, which area alone cannot do.
+  # UPLAND_SKM is kept alongside so the two can be compared directly.
+  river_mouths$DIS_AV_CMS <- if ("DIS_AV_CMS" %in% names(.outlets))
+    .outlets$DIS_AV_CMS else NA_real_
   rm(.outlets, .mouth_xy)
 } else {
   # Natural Earth fallback has no topology: use reach endpoints as mouths
@@ -154,6 +194,7 @@ if ("NEXT_DOWN" %in% names(rivers)) {
     coords = c("lon", "lat"), crs = 4326)
   river_mouths$UPLAND_SKM <- 0
   river_mouths$ORD_FLOW   <- NA_integer_
+  river_mouths$DIS_AV_CMS <- NA_real_
   rm(.mouth_xy)
 }
 message(sprintf("  river mouths: %d", nrow(river_mouths)))
@@ -191,6 +232,83 @@ env_codes <- c(SST = "BO_sstmean", Salinity = "BO_salinity", Kd490 = "BO_damean"
 rstack   <- sdmpredictors::load_layers(unname(env_codes), equalarea = FALSE)
 env_rast <- terra::rast(rstack)
 message("  Rasters loaded: ", paste(names(env_rast), collapse = ", "))
+
+# ── Ecklonia cava complex — Akita et al. (2020) taxonomy ─────────────────────
+# Akita, S., Hashimoto, K., Hanyuda, T. & Kawai, H. (2020) Phycologia 59, 330-339.
+# E. cava, E. kurome and E. stolonifera are one species; the latter two become
+# subspecies of E. cava. WoRMS and AlgaeBase have adopted this.
+#
+# The GBIF backbone carries only TWO species in the genus — E. radiata and
+# E. maxima — so E. cava and its synonyms match nothing and every record
+# bearing those names is indexed at GENUS rank with an empty species field.
+# Any species-level query therefore drops the entire East Asian Ecklonia
+# material: in v1 the genus contributed one species (E. radiata) and 13
+# unusable genus-only records, which is why the kelp group was effectively a
+# Southern-Hemisphere and North-Atlantic sample.
+#
+# R/01_ecklonia_gbif.R recovers the records through the verbatimScientificName
+# parameter of the REST API and writes data/ecklonia_records.csv. Here they are
+# merged in: synonyms already present in bc are relabelled, and the recovered
+# coordinates are appended with environment extracted from the SAME env_rast as
+# every other record, so there is one extraction path. Everything downstream —
+# depth filter, over-water distance, discharge, 1-degree thinning — then treats
+# them like any other occurrence.
+ECK_CSV <- "data/ecklonia_records.csv"
+if (file.exists(ECK_CSV)) {
+  .spc <- intersect(c("species","Species","scientificName","taxon",
+                      "verbatimScientificName"), names(bc))
+  if (length(.spc) == 0) {
+    message("  Ecklonia merge skipped: bc has no species column")
+  } else {
+    .spc <- .spc[1]
+    .syn <- c("Ecklonia kurome", "Ecklonia stolonifera",
+              "Ecklonia cava subsp. kurome", "Ecklonia cava subsp. stolonifera",
+              "Ecklonia cava subsp. cava", "Ecklonia cava f. stolonifera")
+    .hit <- !is.na(bc[[.spc]]) & bc[[.spc]] %in% .syn
+    if (any(.hit)) {
+      message(sprintf("  Ecklonia: relabelled %d existing record(s) to E. cava",
+                      sum(.hit)))
+      bc[[.spc]][.hit] <- "Ecklonia cava"
+    }
+
+    .eck <- utils::read.csv(ECK_CSV, stringsAsFactors = FALSE)
+    .eck <- .eck[.eck$species_accepted == "Ecklonia cava", c("lon","lat")]
+    # drop coordinates bc already holds for this species
+    .have <- paste(round(bc$lon, 4), round(bc$lat, 4))[
+               !is.na(bc[[.spc]]) & bc[[.spc]] == "Ecklonia cava"]
+    .eck <- .eck[!paste(round(.eck$lon, 4), round(.eck$lat, 4)) %in% .have, ,
+                 drop = FALSE]
+
+    if (nrow(.eck) > 0) {
+      .ev <- terra::extract(env_rast,
+               terra::vect(as.matrix(.eck[, c("lon","lat")]), crs = "EPSG:4326"))[, -1,
+               drop = FALSE]
+      names(.ev) <- names(env_codes)[match(names(.ev), unname(env_codes))]
+      if (any(is.na(names(.ev)))) names(.ev) <- names(env_codes)
+      .new <- data.frame(lon = .eck$lon, lat = .eck$lat, Type = "Kelp",
+                         .ev, stringsAsFactors = FALSE)
+      .new[[.spc]] <- "Ecklonia cava"
+      .keep <- is.finite(.new$SST) & is.finite(.new$Salinity) &
+               is.finite(.new$Kd490) & .new$Kd490 > 0
+      .new <- .new[.keep, , drop = FALSE]
+      message(sprintf("  Ecklonia: %d recovered coordinates, %d with complete environment",
+                      nrow(.eck), nrow(.new)))
+      if (nrow(.new) > 0) bc <- dplyr::bind_rows(bc, .new)
+    } else {
+      message("  Ecklonia: no new coordinates to add")
+    }
+
+    # derived columns set before the merge have to be rebuilt for the new rows
+    bc$Type_f  <- factor(bc$Type, levels = ECO_LVLS)
+    bc$abs_lat <- abs(bc$lat)
+    bc$log_Kd  <- log(bc$Kd490)
+    message(sprintf("  bc after Ecklonia merge: %s records", format(nrow(bc), big.mark = ",")))
+    print(table(bc$Type))
+  }
+} else {
+  message("  ", ECK_CSV, " not found — run R/01_ecklonia_gbif.R to add the ",
+          "East Asian Ecklonia records (see Methods)")
+}
 
 # ── Over-water distance to the nearest river mouth ───────────────────────────
 # A great-circle distance can assign a cell to a mouth on the far side of a
@@ -409,9 +527,11 @@ message(sprintf("  occurrences with a land-blocked straight line: %d of %d (%.1f
                 attr(bc$dist_km, "n_blocked"), nrow(bc),
                 100 * attr(bc$dist_km, "n_blocked") / nrow(bc)))
 bc$dist_km       <- as.numeric(bc$dist_km)
-bc$log_dist      <- log10(bc$dist_km + 1)
+bc               <- add_dist_forms(bc)
 bc$upstream_km2  <- river_mouths$UPLAND_SKM[nn_bc_m]
 bc$log_upstream  <- log10(bc$upstream_km2 + 1)
+bc$discharge_cms <- river_mouths$DIS_AV_CMS[nn_bc_m]
+bc$log_discharge <- log10(pmax(bc$discharge_cms, 0) + 1)
 message(sprintf("  dist to river mouth (bc): median %.1f km | IQR %.1f-%.1f km",
                 median(bc$dist_km), quantile(bc$dist_km, .25), quantile(bc$dist_km, .75)))
 if (!is.null(tidal_rast)) {
@@ -766,7 +886,14 @@ FEAT_range <- c("SST","lat")
 # depth: domain filter only (<=MAX_DEPTH_M). log_depth excluded from FEAT:
 # depth discriminates trivially (bg 0-100 m vs presences in shallow zone) and
 # absorbs importance from the ecologically meaningful log_dist signal.
-FEAT       <- c("Salinity","Kd490","log_dist","log_upstream")
+# River size enters as DISCHARGE, not catchment area. Area was the weakest
+# predictor in v1 (0.3-3.3% importance), and part of that is measurement rather
+# than ecology: area counts an arid, sparsely vegetated catchment the same as a
+# wet one, so it is a poor proxy for the freshwater and dissolved load actually
+# delivered. Discharge integrates area with runoff and is carried by
+# HydroRIVERS itself (DIS_AV_CMS). log_upstream stays in the data frames and is
+# compared against log_discharge in R/02_reviewer_analyses.R.
+FEAT       <- c("Salinity","Kd490", DIST_VAR, "log_discharge")
 FEAT_SP    <- FEAT  # same for species level
 
 VAR_LABELS <- c(
@@ -780,6 +907,10 @@ VAR_LABELS <- c(
   depth        = "Water depth (m)",
   log_upstream = "log₁₀(Watershed area + 1) (km²)",
   upstream_km2 = "Watershed area (km²)",
+  log_discharge= "log₁₀(River discharge + 1) (m³ s⁻¹)",
+  discharge_cms= "River discharge (m³ s⁻¹)",
+  inv_dist     = "1 / (Dist. from river mouth + 1) (km⁻¹)",
+  exp_dist     = "exp(−Dist. from river mouth / 50 km)",
   log_city     = "log₁₀(Dist. to city + 1) (km)",
   dist_city_km = "Dist. to nearest city (km)",
   log_tidal    = "log₁₀(Tidal range + 1) (m)",
@@ -805,7 +936,8 @@ message(sprintf("  background points with a land-blocked straight line: %d of %d
                 attr(.bgd, "n_blocked"), length(.bgd),
                 100 * attr(.bgd, "n_blocked") / length(.bgd)))
 bg_dist <- as.numeric(.bgd)
-bg_upstream <- river_mouths$UPLAND_SKM[nn_bg]
+bg_upstream  <- river_mouths$UPLAND_SKM[nn_bg]
+bg_discharge <- river_mouths$DIS_AV_CMS[nn_bg]
 if (!is.null(cities_sf)) {
   nn_bg_city   <- sf::st_nearest_feature(bg_sf, cities_sf)
   bg_city_dist <- as.numeric(
@@ -816,7 +948,8 @@ if (!is.null(cities_sf)) {
 
 bg_df <- data.frame(lon = bg_pts$x, lat = bg_pts$y, dist_km = bg_dist,
                      abs_lat = abs(bg_pts$y), bg_env,
-                     upstream_km2 = bg_upstream, dist_city_km = bg_city_dist,
+                     upstream_km2 = bg_upstream, discharge_cms = bg_discharge,
+                     dist_city_km = bg_city_dist,
                      presence = 0L) |>
   dplyr::filter(!is.na(SST), !is.na(Salinity), !is.na(Kd490),
                 is.finite(dist_km), Kd490 > 0)
@@ -831,9 +964,10 @@ if (!is.null(tidal_rast)) {
   bg_df$tidal_m <- 0
 }
 bg_df <- bg_df |> dplyr::filter(depth <= MAX_DEPTH_M)
-bg_df$log_dist     <- log10(bg_df$dist_km      + 1)
-bg_df$log_depth    <- log10(bg_df$depth        + 1)
-bg_df$log_upstream <- log10(bg_df$upstream_km2 + 1)
+bg_df               <- add_dist_forms(bg_df)
+bg_df$log_depth     <- log10(bg_df$depth        + 1)
+bg_df$log_upstream  <- log10(bg_df$upstream_km2 + 1)
+bg_df$log_discharge <- log10(pmax(bg_df$discharge_cms, 0) + 1)
 bg_df$log_city     <- log10(bg_df$dist_city_km + 1)
 bg_df$log_tidal    <- log10(bg_df$tidal_m      + 1)
 message(sprintf("  bg_df after depth filter (<=%.0f m): %d points", MAX_DEPTH_M, nrow(bg_df)))
@@ -1232,10 +1366,13 @@ message("Checkpoint 1 saved → ", RDS_DIR)
 # =============================================================================
 # FIGURE A1 — Predictor correlation matrix (Appendix)
 # =============================================================================
-CORR_LABELS <- c(Salinity     = "Salinity",
-                 Kd490        = "Kd490",
-                 log_dist     = "log₁₀(Dist+1)",
-                 log_upstream = "log₁₀(Wshed+1)")
+CORR_LABELS <- c(Salinity      = "Salinity",
+                 Kd490         = "Kd490",
+                 log_dist      = "log₁₀(Dist+1)",
+                 inv_dist      = "1/(Dist+1)",
+                 exp_dist      = "exp(−Dist/50)",
+                 log_upstream  = "log₁₀(Wshed+1)",
+                 log_discharge = "log₁₀(Discharge+1)")
 
 cor_mat <- bc |>
   dplyr::select(all_of(FEAT)) |>
@@ -1664,12 +1801,12 @@ if (length(sp_col) == 0) {
                                                        0.02, na.rm = TRUE))),
                                log(quantile(bc$Kd490, 0.98, na.rm = TRUE)),
                                length.out = 50)),
-        log_dist     = seq(log10(1 + 0),
-                           log10(1 + quantile(bc$dist_km, 0.90, na.rm = TRUE)),
-                           length.out = 50),
-        log_upstream = seq(quantile(bc$log_upstream, 0.02, na.rm = TRUE),
-                           quantile(bc$log_upstream, 0.98, na.rm = TRUE), length.out = 50)
+        dist_seq      = km_to_dist(seq(0, quantile(bc$dist_km, 0.90, na.rm = TRUE),
+                                       length.out = 50)),
+        log_discharge = seq(quantile(bc$log_discharge, 0.02, na.rm = TRUE),
+                            quantile(bc$log_discharge, 0.98, na.rm = TRUE), length.out = 50)
       )
+      names(var_grids)[names(var_grids) == "dist_seq"] <- DIST_VAR
 
       sp_pd_raw <- purrr::map_dfr(names(sp_models), \(key) {
         parts <- strsplit(key, "__")[[1]]
@@ -1719,9 +1856,9 @@ if (length(sp_col) == 0) {
 
       p_sal  <- make_pd_panel("Salinity",     "Salinity (PSU)",            log_x = FALSE, show_y = TRUE)
       p_kd   <- make_pd_panel("Kd490",        "Kd490 (m⁻¹)",              log_x = TRUE,  show_y = FALSE)
-      p_dist <- make_pd_panel("log_dist",     "Distance from river mouth (km)",  log_x = FALSE, show_y = TRUE, back_log10 = TRUE)
-      p_up    <- make_pd_panel("log_upstream", "Watershed area (km²)",   log_x = FALSE, show_y = FALSE, back_log10 = TRUE,
-                              nice_pow10 = c(10, 100, 1000, 10000, 100000))
+      p_dist <- make_pd_panel(DIST_VAR,        "Distance from river mouth (km)",  log_x = FALSE, show_y = TRUE, back_log10 = (DIST_VAR == "log_dist"))
+      p_up    <- make_pd_panel("log_discharge", "River discharge (m³ s⁻¹)", log_x = FALSE, show_y = FALSE, back_log10 = TRUE,
+                              nice_pow10 = c(1, 10, 100, 1000, 10000))
       fig_s3 <- ((p_sal | p_kd) / (p_dist | p_up)) +
         patchwork::plot_layout(guides = "collect") &
         theme(legend.position = "bottom")
@@ -2006,7 +2143,15 @@ if (file.exists(GRID_CACHE)) {
     message("  Adding upstream_km2 to cached world_grid (one-time)...")
     wg_sf_tmp <- sf::st_as_sf(world_grid[, c("lon","lat")], coords = c("lon","lat"), crs = 4326)
     nn_g_up   <- sf::st_nearest_feature(wg_sf_tmp, river_mouths)
-    world_grid$upstream_km2 <- river_mouths$UPLAND_SKM[nn_g_up]
+    world_grid$upstream_km2  <- river_mouths$UPLAND_SKM[nn_g_up]
+    world_grid$discharge_cms <- river_mouths$DIS_AV_CMS[nn_g_up]
+    saveRDS(world_grid, GRID_CACHE)
+  }
+  if (!"discharge_cms" %in% names(world_grid)) {
+    message("  Adding discharge_cms to cached world_grid (one-time)...")
+    wg_sf_tmp <- sf::st_as_sf(world_grid[, c("lon","lat")], coords = c("lon","lat"), crs = 4326)
+    nn_g_dis  <- sf::st_nearest_feature(wg_sf_tmp, river_mouths)
+    world_grid$discharge_cms <- river_mouths$DIS_AV_CMS[nn_g_dis]
     saveRDS(world_grid, GRID_CACHE)
   }
   if (!"dist_city_km" %in% names(world_grid) && !is.null(cities_sf)) {
@@ -2048,7 +2193,8 @@ if (file.exists(GRID_CACHE)) {
                   attr(.gd, "n_blocked"), length(.gd),
                   100 * attr(.gd, "n_blocked") / length(.gd)))
   world_grid$dist_km <- as.numeric(.gd)
-  world_grid$upstream_km2 <- river_mouths$UPLAND_SKM[nn_g]
+  world_grid$upstream_km2  <- river_mouths$UPLAND_SKM[nn_g]
+  world_grid$discharge_cms <- river_mouths$DIS_AV_CMS[nn_g]
   if (!is.null(cities_sf)) {
     message("  Computing city distances for grid...")
     nn_g_city <- sf::st_nearest_feature(grid_sf, cities_sf)
@@ -2072,9 +2218,10 @@ if (file.exists(GRID_CACHE)) {
 
 world_grid <- world_grid |> dplyr::filter(depth <= MAX_DEPTH_M)
 message(sprintf("  world_grid after depth filter (<=%.0f m): %d cells", MAX_DEPTH_M, nrow(world_grid)))
-world_grid$log_dist     <- log10(world_grid$dist_km      + 1)
-world_grid$log_depth    <- log10(world_grid$depth        + 1)
-world_grid$log_upstream <- log10(world_grid$upstream_km2 + 1)
+world_grid               <- add_dist_forms(world_grid)
+world_grid$log_depth     <- log10(world_grid$depth        + 1)
+world_grid$log_upstream  <- log10(world_grid$upstream_km2 + 1)
+world_grid$log_discharge <- log10(pmax(world_grid$discharge_cms, 0) + 1)
 world_grid$log_city     <- log10(world_grid$dist_city_km + 1)
 world_grid$log_tidal    <- log10(world_grid$tidal_m      + 1)
 world_grid$dist_km_baseline <- world_grid$dist_km  # for filtering scenario figures
@@ -2404,3 +2551,16 @@ message("Dist:     FigD4_EmpiricalOccupancy — raw dist-from-river-mouth vs occ
 message("Scenario: FigSc2–Sc3  (+ScenarioDeltaSummary.csv)")
 message("  FigSc2: % change in mean suitability vs regulation intensity")
 message("  FigSc3: dist_km pathway only (Kd490 excluded — artifact direction in model)")
+
+# =============================================================================
+# PART 8 — SUPPLEMENTARY ANALYSES ADDED IN REVISION
+# =============================================================================
+# Turbidity decomposition, distance functional-form selection, river-size
+# predictor comparison and the one-stage / two-stage contrast. Kept in their own
+# file so this one stays readable; it runs in this environment and uses bc,
+# bg_df, world_grid, FEAT and FEAT_range as they stand at this point.
+if (file.exists("R/02_reviewer_analyses.R")) {
+  source("R/02_reviewer_analyses.R", echo = FALSE)
+} else {
+  message("R/02_reviewer_analyses.R not found — supplementary analyses skipped")
+}
