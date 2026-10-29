@@ -139,18 +139,19 @@ footer { font-size: 0.82rem; color: var(--muted); display: grid; gap: 6px; borde
   <h1>ブルーカーボン改訂解析報告</h1>
   <p>沿岸ブルーカーボン生態系（海草・マングローブ・コンブ類）の2段階 MaxEnt モデルについて、査読対応の改訂版を実行した結果、見つかった問題への対応、頑健性の検証、コメントへの回答案をまとめます。</p>
   <div class="meta">
-    <span>2026-10-29（第2版）</span>
+    <span>2026-10-30（第3版）</span>
     <span>RTX サーバー（R 4.5.3, conda <code>gcbc</code>）</span>
     <span>ブランチ <code>server-run-20261029</code></span>
   </div>
   <nav class="toc" aria-label="目次">
-    <a href="#findings">主な発見</a><a href="#design">1段階か2段階か</a><a href="#cap">種あたり上限</a><a href="#supp">補足解析</a><a href="#v5">v5 との対照</a><a href="#reply">回答文の下書き</a><a href="#todo">残課題</a>
+    <a href="#findings">主な発見</a><a href="#design">1段階か2段階か</a><a href="#cap">種あたり上限</a><a href="#supp">補足解析</a><a href="#v5">v5 との対照</a><a href="#struct">構造モデル案</a><a href="#reply">返信文の下書き</a><a href="#todo">残課題</a>
   </nav>
 </header>
 
 <div class="summary">
   <div class="eyebrow">要点</div>
   <ul>
+    <li><b>共著者の構造モデル案（塩分経由で河口距離と集水域を説明する）は、考え方は正しいもののデータが支えきれませんでした。</b>外洋の塩分を IDW で取ると、河口から 50〜100 km で塩分が外洋の値に戻る減衰は見えました。しかし集水域が大きいほど塩分が下がる関係は出ず、河口距離を外した SDM は AUC が 0.04〜0.09 下がります。全球の塩分データ（約 9 km の平均値）では河口ごとのプルームが均されてしまうためです。SDM には河口距離を残し、このモデルは考察の枠組みとして使うのが妥当です。</li>
     <li><b>2段階設計で距離の寄与が大きく測れることは確認できましたが、原稿の書き方は強すぎました。</b>ブートストラップ50回の検証では、テスト側で距離をシャッフルしたときの AUC 低下が、2段階で 1段階より 0.06〜0.08 大きくなりました（海草・マングローブは95%区間が0を含まず、上限の設定を変えても同じ）。一方、距離を外して推定し直す方法では、同じ向きでも区間は0を含み、1段階でも距離の寄与はゼロではありません。「1段階では埋もれる」ではなく「2段階でおよそ2倍に測れる」が妥当です。</li>
     <li><b>コメントの「濁度から温度影響を除けば1段階で済む」案は、効果がありませんでした。</b>Kd490 の残差を使っても、1段階モデルでの距離の寄与は増えません（差はほぼ0、4通りの上限すべてで同じ）。</li>
     <li><b>v5 との数値のずれの原因を特定しました。</b>terra のバージョンで、同じ乱数シードでも背景点の抽出結果が変わります。v5 のコードを terra 1.8.86 で走らせると、原稿の Stage 1 AUC（0.834 / 0.880 / 0.914）が完全に再現しました。逆に言えば、背景点を引き直すだけで AUC が 0.03〜0.06 動きます。</li>
@@ -326,12 +327,110 @@ footer { font-size: 0.82rem; color: var(--muted); display: grid; gap: 6px; borde
   <p class="caption">* 1° 間引き後の種ごとモデルの中央値（FigSp1）。占有率は FigD4 からの読み取り。CV AUC は4ブロックの平均 ± SD。改訂そのものの効果は、同じ環境で走らせた中央列と右列の差で読みます。コンブ（カジメ追加と上限）、規制の影響（不具合修正）、河川の大きさ（面積→流量）以外は、ほぼ背景点の引き直しと同程度のずれです。</p>
 </section>
 
+<section id="struct">
+  <h2>共著者の構造モデル案（10/30 のコメント）</h2>
+  <div class="callout">
+    <p><b>提案：河口距離や集水域面積を直接 SDM に入れず、陸からの影響が届く経路として整理する。</b></p>
+    <ul style="margin:0;padding-left:1.2em;display:grid;gap:4px">
+      <li>塩分の式：S = b0 − b1·B·exp(−b2·D)。淡水が海を薄めるので陸の影響は塩分の低下に現れ、河口で最も低く、離れると外洋の塩分 b0 に戻る。集水域 B が大きいほど低下も大きい（b1 &gt; 0）。</li>
+      <li>濁度の分解：log K = a0 + a1·S + a2·T + σk。塩分で説明できる陸由来、水温で説明できる海の性質、残り σk を海由来とみなす。</li>
+      <li>SDM は水温 T・塩分 S・σk で作り、河口距離 D と集水域 B は塩分を通じて効くとする。</li>
+    </ul>
+  </div>
+  <p>外洋の塩分 b0 は、提案どおり海岸から 50 km 以内のセルを欠損させ、外洋の値から IDW で補間しました（25 km・100 km でも確認）。式は log(b0 − S) = log(b1) + β·log(B) − D/L の形で、B の指数 β も推定しています。以下、確かめた4点です。</p>
+
+  <h3>1. 塩分の式 → 距離の減衰は見えたが、集水域の効果は出ない</h3>
+  <div class="well"><table>
+    <thead><tr><th>河口からの距離</th><th class="num">セル数</th><th class="num">b0 − S 中央値</th><th class="num">b0 − S 90%点</th></tr></thead>
+    <tbody>
+      <tr><td>0〜10 km</td><td class="num">660</td><td class="num">0.15 PSU</td><td class="num">2.37</td></tr>
+      <tr><td>10〜25 km</td><td class="num">2,202</td><td class="num">0.14</td><td class="num">2.56</td></tr>
+      <tr><td>25〜50 km</td><td class="num">2,584</td><td class="num">0.09</td><td class="num">1.63</td></tr>
+      <tr><td>50〜100 km</td><td class="num">3,102</td><td class="num">0.02</td><td class="num">1.06</td></tr>
+      <tr><td>100〜200 km</td><td class="num">3,384</td><td class="num">0.00</td><td class="num">0.36</td></tr>
+      <tr><td>200〜500 km</td><td class="num">2,729</td><td class="num">−0.01</td><td class="num">0.07</td></tr>
+    </tbody>
+  </table></div>
+  <p class="caption">水深 100 m 以浅・河口から 500 km 以内の 0.5° 格子。IDW の b0（欠損幅 50 km）。</p>
+  <p>河口近くほど塩分が低く、50〜100 km でほぼ外洋の値に戻ります。減衰のスケールは約 58 km でした（欠損幅 25 km で 36 km、100 km で 92 km と変わるので目安）。一方で集水域面積の指数は β ≈ −0.005（p = 0.60）で、大きな川ほど塩分が下がる関係は出ません。海岸近くでも b0 より低塩分のセルは 38% で、式全体の説明力も R² ≈ 0.05 です。全球の塩分データ（Bio-ORACLE、約 9 km 格子の平均値）では河口ごとのプルームが均され、残っているのは主にベンガル湾のような広い海域の低塩分だと考えられます。</p>
+
+  <h3>2. 残差 σk → 海由来にはなっていない</h3>
+  <p>log(濁度) を塩分と水温で回帰した説明力は R² = 0.17 でした。残差 σk は河口距離とまだ強く相関し（r = −0.45）、σk を河口距離と流量で回帰すると R² = 0.22 になります。塩分が捉えきれなかった陸の影響が残差に回るためで、今のデータでは σk を「海域由来」と読めません。</p>
+
+  <h3>3. 河口距離を外した SDM → 予測性能が下がる</h3>
+  <div class="well"><table>
+    <thead><tr><th>2段階目の CV AUC（中央値）</th><th class="num"><span class="eco sg">海草</span></th><th class="num"><span class="eco mg">マングローブ</span></th><th class="num"><span class="eco kp">コンブ</span></th></tr></thead>
+    <tbody>
+      <tr><td>現行（塩分・濁度・河口距離・流量）</td><td class="num">0.670</td><td class="num">0.734</td><td class="num">0.698</td></tr>
+      <tr><td>構造モデル（塩分・σk）</td><td class="num">0.623</td><td class="num">0.687</td><td class="num">0.604</td></tr>
+      <tr><td>構造モデル + log 河口距離</td><td class="num">0.664</td><td class="num">0.741</td><td class="num">0.698</td></tr>
+    </tbody>
+  </table></div>
+  <div class="well"><table>
+    <thead><tr><th>同じ反復内での差</th><th class="num"><span class="eco sg">海草</span></th><th class="num"><span class="eco mg">マングローブ</span></th><th class="num"><span class="eco kp">コンブ</span></th></tr></thead>
+    <tbody>
+      <tr><td>構造モデル − 現行（2段階）</td><td class="num">−0.041 [−0.099, −0.002]</td><td class="num">−0.047 [−0.074, −0.012]</td><td class="num">−0.089 [−0.164, +0.056]</td></tr>
+      <tr class="hl"><td>河口距離の上乗せ（1段階、T・S・σk に追加）</td><td class="num">+0.044 [+0.016, +0.096]</td><td class="num">+0.030 [+0.013, +0.049]</td><td class="num">+0.044 [+0.020, +0.071]</td></tr>
+      <tr><td>河口距離の上乗せ（2段階、S・σk に追加）</td><td class="num">+0.043 [−0.011, +0.086]</td><td class="num">+0.053 [+0.024, +0.078]</td><td class="num">+0.085 [−0.031, +0.164]</td></tr>
+    </tbody>
+  </table></div>
+  <p class="caption">中央値 [95% 区間]、ブートストラップ 50 回、上限 100。</p>
+  <p>河口距離を外すと AUC が 0.04〜0.09 下がり、戻すとほぼ回復します。1段階モデルでは3群とも、距離の上乗せの区間が 0 を含みません。距離の情報を塩分では運べていません。</p>
+
+  <h3>4. 集水域の効果を塩分経由で → ゼロ</h3>
+  <p>推定した塩分の式で集水域を 2 倍・10 倍にしたときの、構造モデルでの適合度の変化は 0.02% 未満でした。</p>
+
+  <h3>補足：塩分の式をそのまま説明変数にする</h3>
+  <p>「河川規模 × exp(−距離/L)」をプルーム指数 P = log(1 + Q·exp(−D/L)) として、河口距離と流量の代わりに入れる版も試しました。</p>
+  <div class="well"><table>
+    <thead><tr><th>現行との差（2段階）</th><th class="num"><span class="eco sg">海草</span></th><th class="num"><span class="eco mg">マングローブ</span></th><th class="num"><span class="eco kp">コンブ</span></th></tr></thead>
+    <tbody>
+      <tr class="hl"><td>プルーム指数 L = 10 km</td><td class="num">−0.018 [−0.054, +0.018]</td><td class="num">−0.009 [−0.023, +0.017]</td><td class="num">−0.028 [−0.065, +0.012]</td></tr>
+      <tr><td>プルーム指数 L = 50 km</td><td class="num">−0.041 [−0.082, −0.016]</td><td class="num">−0.031 [−0.056, −0.010]</td><td class="num">−0.070 [−0.119, +0.013]</td></tr>
+      <tr><td>プルーム指数 L = 100 km</td><td class="num">−0.043 [−0.088, −0.007]</td><td class="num">−0.043 [−0.071, −0.008]</td><td class="num">−0.080 [−0.145, +0.028]</td></tr>
+      <tr><td>河川規模なし（塩分・濁度・河口距離）</td><td class="num">−0.006 [−0.041, +0.011]</td><td class="num">+0.006 [−0.000, +0.020]</td><td class="num">+0.004 [−0.036, +0.046]</td></tr>
+    </tbody>
+  </table></div>
+  <p>どの L でも現行を上回らず、L = 10 km が最も近い結果でした。河川規模を掛けても距離だけのモデルより良くならず、「河川の大きさは効かない」というこれまでの結果と整合します。exp(−距離/L) を使う場合も、L は 10 km 前後と短めが妥当です。</p>
+
+  <p><b>まとめ。</b>考え方は正しいのですが、全球データの解像度が足りず、塩分は河口距離の代わりになりませんでした。今のデータで陸の影響の強さを最もよく表しているのは河口距離です。原稿では、このモデルを陸からの流入の経路を説明する枠組みとして考察で紹介し、塩分の距離減衰を補足に示し、SDM には河口距離を残すのが良いと考えます。集水域の植生割合（RiverATLAS）は今回は見送りました。</p>
+</section>
+
 <section id="reply">
-  <h2>コメントへの回答文（下書き）</h2>
-  <div class="reply" id="reply-text">
+  <h2>共著者への返信文（下書き）</h2>
+
+  <div class="reply">
     <div class="reply-bar">
-      <span class="eyebrow">そのまま貼れる形</span>
-      <span><button class="copy" id="copy-reply" type="button">本文をコピー</button> <span class="copy-status" id="copy-status" aria-live="polite"></span></span>
+      <span class="eyebrow">返信 2 · 構造モデル案（10/30）へ</span>
+      <span><button class="copy" type="button" data-target="reply2-body">本文をコピー</button> <span class="copy-status" aria-live="polite"></span></span>
+    </div>
+    <div id="reply2-body" style="display:grid;gap:14px">
+      <p>コメントありがとうございます。いただいたモデルをそのまま組んで試しました。結論から言うと、考え方（陸域からの流入は塩分に現れ、河口から指数的に薄まる）は筋が通っていて、b0 を外洋から IDW で取る方法で、塩分の距離減衰も実際に見えました。ただ、手元の全球塩分データ（Bio-ORACLE、約9 km の気候値）では集水域面積の効果が塩分に現れず、塩分で河口距離を置き換えることはできませんでした。以下、詳しく書きます。</p>
+      <h4>1. 河口距離の関数形</h4>
+      <p>exp(−距離/L) は、距離0で1になり値が暴れない点で扱いやすいと思います。log(距離+1)、1/(距離+1)、exp(−距離/50 km) の3つを比べたところ、予測性能はほぼ同じでした（差は 0.007 以内）。exp を使う場合のスケール L は、下の塩分の式からは 40〜90 km、河川規模と組み合わせた指数（後述）では 10 km が最も良く、どちらにしても短めになります。</p>
+      <h4>2. 塩分の式</h4>
+      <p>S = b0 − b1·B^β·exp(−D/L)（b1 &gt; 0）として、log(b0 − S) = log(b1) + β·log(B) − D/L の形で推定しました。B の指数 β も推定しています。b0 は、ご提案どおり海岸から 50 km 以内のセルを欠損させ、外洋の値から IDW で補間しました（25 km、100 km でも確認）。</p>
+      <ul>
+        <li>距離減衰ははっきり出ました。b0 − S の中央値は、河口から 0〜10 km で 0.15 PSU、25〜50 km で 0.09、50〜100 km で 0.02、100 km 以遠ではほぼ 0 です。減衰のスケールは約 60 km でした（ただし欠損させる幅に応じて 36〜92 km と変わるので、目安です）。</li>
+        <li>一方、集水域面積 B の効果は出ませんでした（β ≈ 0、p = 0.6）。海岸近くでも b0 より低塩分のセルは4割ほどで、式全体の説明力も R² ≈ 0.05 と小さいです。集水域を2倍にしたときの、塩分を経由した適合度の変化はゼロでした。</li>
+      </ul>
+      <p>全球の塩分データは河口ごとの淡水プルームを解像できておらず、ベンガル湾のような地域スケールの低塩分を主に反映しているためだと考えています。</p>
+      <h4>3. 濁度の残差 σk</h4>
+      <p>log(濁度) = a0 + a1·塩分 + a2·水温 + σk として推定しました（R² = 0.17）。ただ、残差 σk はまだ河口距離と強く相関していて（r = −0.45）、σk を河口距離と流量で回帰すると R² = 0.22 になります。塩分が捉えきれない陸域の影響が残差に残ってしまうため、今のデータでは σk を「海域由来」と読むのは難しい状況です。</p>
+      <h4>4. 水温・塩分・σk による SDM（河口距離なし）</h4>
+      <p>現行のモデルと比べると、予測性能（空間ブロック交差検証の AUC、ブートストラップ 50 回）は 0.04〜0.09 下がりました。河口距離を加えるとほぼ元に戻ります（1段階モデルでは、3群とも距離の上乗せの 95% 区間が 0 を含みません）。塩分が河口距離の情報を運べていないので、距離を外すことはできませんでした。</p>
+      <p>塩分の式そのもの（河川規模 × exp(−距離/L)）を「プルーム指数」として、距離と流量の代わりに入れる版も試しましたが、どの L でも現行モデルを上回りませんでした（L = 10 km が最も近い）。河川規模を掛けても距離だけのモデルより良くならない点は、これまでの「河川の大きさは効かない」という結果と整合します。</p>
+      <h4>5. 集水域の植生</h4>
+      <p>今回は見送りました。上の結果からすると、植生の効果も塩分を経由した形では出にくいと考えています。</p>
+      <h4>まとめ</h4>
+      <p>このモデルは、陸域からの流入がどの経路で効くかを説明する枠組みとして、考察で使えると思います。ただ、全球データの解像度では塩分が河口距離の代わりにならないため、SDM には河口距離を残し、塩分の式（距離減衰は出たが、集水域の効果は出なかった）は補足として示すのが良いと考えています。沿岸の塩分を高解像度で扱える海域（衛星や地域海洋モデル）なら、この枠組みはもっと生きるはずです。</p>
+    </div>
+  </div>
+
+  <div class="reply">
+    <div class="reply-bar">
+      <span class="eyebrow">返信 1 · 最初のコメントへ</span>
+      <span><button class="copy" type="button" data-target="reply-body">本文をコピー</button> <span class="copy-status" aria-live="polite"></span></span>
     </div>
     <div id="reply-body" style="display:grid;gap:14px">
       <p>丁寧に読んでいただき、ありがとうございます。ご指摘のとおり、濁度・河口からの距離・流域面積の位置づけと、それぞれの影響過程の切り分けは、原稿で説明に苦慮していたところです。いただいた提案はほぼそのまま解析し、結果を以下にまとめました。</p>
@@ -370,6 +469,7 @@ footer { font-size: 0.82rem; color: var(--muted); display: grid; gap: 6px; borde
     <li><b>原稿の数値をどの環境でそろえるか。</b>terra 1.9.50（このサーバー）でそろえるのが推奨。v5 の値を残したいなら terra 1.8.86 で改訂版を走らせ直すこともできます。どちらにしても混ぜないこと。</li>
     <li><b>背景点の抽出を複数回繰り返した結果で示すか。</b>引き直し1回で AUC が 0.03〜0.06 動くため、本文の主要な数値は 10 回程度の繰り返しの中央値と区間で示すのが安全です。</li>
     <li><b>1段階 vs 2段階の書き方の修正。</b>「埋もれる」→「およそ2倍に測れる」。シャッフルと除去・再推定の両方を区間つきで。</li>
+    <li><b>構造モデル案の扱い。</b>考察で陸からの流入経路の枠組みとして紹介し、塩分の距離減衰（IDW の b0）を補足図にするか。返信 2 を共著者に送る。</li>
     <li><b>回答書での不具合の開示。</b>v5 の規制シナリオは濁度経路のみで、影響を過小評価していた。</li>
     <li><b>補足表 S1 の作り直し。</b>カジメの統合で、コンブの属・種の数が変わる。</li>
     <li><b>ブランチの取り込み。</b><code>server-run-20261029</code> を main にマージするか（Mac 側のセッションと調整）。</li>
@@ -379,7 +479,7 @@ footer { font-size: 0.82rem; color: var(--muted); display: grid; gap: 6px; borde
 
 <footer>
   <div>実行環境：RTX サーバー、R 4.5.3、terra 1.9.50（再現確認のみ 1.8.86）、sf 1.1.3、maxnet 0.1.4、xgboost 3.4.2.1。EOT20 潮汐データあり。</div>
-  <div>出力：<code>output/</code>（上限 100、本解析）、<code>output_cap50/</code>、<code>output_cap200/</code>、<code>output_capInf/</code>。頑健性は <code>R/03_robustness.R</code> → <code>TabS_robust_*.csv</code>。v5 再現は <code>../gcbc_v5_terra18/</code>。詳細は <code>RUN_NOTES.md</code>。</div>
+  <div>出力：<code>output/</code>（上限 100、本解析）、<code>output_cap50/</code>、<code>output_cap200/</code>、<code>output_capInf/</code>。頑健性は <code>R/03_robustness.R</code> → <code>TabS_robust_*.csv</code>、構造モデル案は <code>R/04_structural.R</code> → <code>TabS_struct_*.csv</code>。v5 再現は <code>../gcbc_v5_terra18/</code>。詳細は <code>RUN_NOTES.md</code>。</div>
 </footer>
 </main>
 
@@ -439,18 +539,20 @@ footer { font-size: 0.82rem; color: var(--muted); display: grid; gap: 6px; borde
     host.appendChild(panel);
   });
 
-  var btn = document.getElementById("copy-reply"), status = document.getElementById("copy-status");
-  var body = document.getElementById("reply-body");
-  btn.addEventListener("click", function () {
-    var text = body.innerText.replace(/\n{3,}/g, "\n\n").trim();
-    function fallback() {
-      var range = document.createRange(); range.selectNodeContents(body);
-      var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
-      status.textContent = "選択しました。⌘C / Ctrl+C でコピーしてください";
-    }
-    try {
-      navigator.clipboard.writeText(text).then(function () { status.textContent = "コピーしました"; }, fallback);
-    } catch (e) { fallback(); }
+  Array.prototype.forEach.call(document.querySelectorAll("button.copy[data-target]"), function (btn) {
+    var body = document.getElementById(btn.getAttribute("data-target"));
+    var status = btn.parentNode.querySelector(".copy-status");
+    btn.addEventListener("click", function () {
+      var text = body.innerText.replace(/\n{3,}/g, "\n\n").trim();
+      function fallback() {
+        var range = document.createRange(); range.selectNodeContents(body);
+        var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+        status.textContent = "選択しました。⌘C / Ctrl+C でコピーしてください";
+      }
+      try {
+        navigator.clipboard.writeText(text).then(function () { status.textContent = "コピーしました"; }, fallback);
+      } catch (e) { fallback(); }
+    });
   });
 })();
 </script>
