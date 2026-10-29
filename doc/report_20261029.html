@@ -1,0 +1,456 @@
+<title>ブルーカーボン改訂解析報告</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@600;700&family=Noto+Sans+JP:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: single reading column (~50rem); findings first, evidence after, reply draft last */
+:root {
+  --bg: #f6f8f9;
+  --surface: #ffffff;
+  --fg: #16232b;
+  --muted: #55656f;
+  --rule: #d5dee3;
+  --accent: #1d5d7a;
+  --accent-soft: #e3eef3;
+  --seagrass: #00866a;
+  --mangrove: #b87800;
+  --kelp: #0067a8;
+  --s-two: #2a78d6;
+  --s-one: #eb6834;
+  --ok: #2d7a46;
+  --ok-soft: #e2f1e7;
+  --warn: #a35a00;
+  --warn-soft: #fbeedc;
+  --font-display: "Shippori Mincho B1", "Hiragino Mincho ProN", "Yu Mincho", serif;
+  --font-body: "Noto Sans JP", "Hiragino Sans", "Yu Gothic", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f171c; --surface: #16222a; --fg: #e3ebef; --muted: #9aabb5; --rule: #2a3a44;
+    --accent: #7cc0dd; --accent-soft: #1b3240;
+    --seagrass: #4cc9a6; --mangrove: #e6b04a; --kelp: #5fb0e6;
+    --s-two: #3987e5; --s-one: #d95926;
+    --ok: #74c98f; --ok-soft: #173025; --warn: #e6a95a; --warn-soft: #34261a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f171c; --surface: #16222a; --fg: #e3ebef; --muted: #9aabb5; --rule: #2a3a44;
+  --accent: #7cc0dd; --accent-soft: #1b3240;
+  --seagrass: #4cc9a6; --mangrove: #e6b04a; --kelp: #5fb0e6;
+  --s-two: #3987e5; --s-one: #d95926;
+  --ok: #74c98f; --ok-soft: #173025; --warn: #e6a95a; --warn-soft: #34261a;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg);
+  font-family: var(--font-body); font-size: 15px; line-height: 1.8;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 40px 72px;
+}
+main { max-width: 50rem; margin: 0 auto; display: grid; gap: 48px; }
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; line-height: 1.4; margin: 0; }
+h1 { font-size: 2rem; }
+h2 { font-size: 1.4rem; padding-bottom: 6px; border-bottom: 2px solid var(--fg); }
+h3 { font-size: 1.08rem; }
+p { margin: 0; }
+section { display: grid; gap: 16px; min-width: 0; }
+.eyebrow { font-family: var(--font-mono); font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+header { display: grid; gap: 12px; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 0.85rem; color: var(--muted); }
+.meta code { color: var(--fg); }
+code, .mono { font-family: var(--font-mono); font-size: 0.88em; }
+em.sp { font-style: italic; }
+nav.toc { font-size: 0.88rem; display: flex; flex-wrap: wrap; gap: 4px 16px; }
+nav.toc a { color: var(--accent); text-decoration: none; border-bottom: 1px solid transparent; }
+nav.toc a:hover, nav.toc a:focus-visible { border-bottom-color: var(--accent); outline: none; }
+
+.summary { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 20px 22px; display: grid; gap: 12px; }
+.summary ul { margin: 0; padding-left: 1.2em; display: grid; gap: 10px; }
+
+.chip { display: inline-block; font-family: var(--font-body); font-size: 0.74rem; font-weight: 700; letter-spacing: 0.04em; padding: 1px 8px; border-radius: 999px; white-space: nowrap; vertical-align: 0.1em; }
+.chip.ok { background: var(--ok-soft); color: var(--ok); }
+.chip.warn { background: var(--warn-soft); color: var(--warn); }
+
+.well { overflow-x: auto; border: 1px solid var(--rule); border-radius: 6px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 0.88rem; line-height: 1.5; }
+th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--rule); vertical-align: top; }
+thead th { font-size: 0.78rem; color: var(--muted); font-weight: 500; background: var(--accent-soft); white-space: nowrap; }
+tbody tr:last-child td { border-bottom: 0; }
+td.num, th.num { text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+tr.hl td { background: var(--accent-soft); font-weight: 500; }
+.caption { font-size: 0.82rem; color: var(--muted); }
+.eco { font-weight: 700; }
+.eco.sg { color: var(--seagrass); } .eco.mg { color: var(--mangrove); } .eco.kp { color: var(--kelp); }
+
+.callout { border-left: 3px solid var(--accent); padding: 4px 0 4px 16px; display: grid; gap: 8px; }
+.findings { display: grid; gap: 32px; }
+.finding { display: grid; gap: 12px; }
+.finding h3 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; }
+
+/* forest plot */
+.chart { display: grid; gap: 10px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 0.82rem; color: var(--muted); align-items: center; }
+.legend .k { display: inline-flex; align-items: center; gap: 6px; }
+.legend svg { overflow: visible; }
+.panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+.panel { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 10px 4px; min-width: 0; display: grid; gap: 4px; }
+.panel h4 { margin: 0; font-size: 0.9rem; font-family: var(--font-body); }
+.panel svg { width: 100%; height: auto; display: block; }
+.panel svg text { font-family: var(--font-body); fill: var(--muted); }
+.panel svg .tick { font-family: var(--font-mono); font-size: 9px; }
+.panel svg .row { font-size: 10px; fill: var(--fg); }
+.panel svg .grid { stroke: var(--rule); stroke-width: 1; }
+.panel svg .zero { stroke: var(--muted); stroke-width: 1; }
+.panel svg .ci-one { stroke: var(--s-one); stroke-width: 2; stroke-linecap: round; }
+.panel svg .ci-two { stroke: var(--s-two); stroke-width: 2; stroke-linecap: round; }
+.panel svg .pt-one { fill: var(--s-one); stroke: var(--surface); stroke-width: 2; }
+.panel svg .pt-two { fill: var(--s-two); stroke: var(--surface); stroke-width: 2; }
+.panel svg .pt-open-one { fill: var(--surface); stroke: var(--s-one); stroke-width: 2; }
+.panel svg .pt-open-two { fill: var(--surface); stroke: var(--s-two); stroke-width: 2; }
+.panel svg .hit { fill: transparent; }
+
+.figpair { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+figure { margin: 0; display: grid; gap: 6px; min-width: 0; }
+figure img { width: 100%; height: auto; border: 1px solid var(--rule); border-radius: 6px; background: #ffffff; }
+figcaption { font-size: 0.82rem; color: var(--muted); }
+
+.reply { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 20px 22px; display: grid; gap: 14px; }
+.reply h4 { margin: 0; font-size: 0.95rem; font-family: var(--font-body); }
+.reply ul { margin: 0; padding-left: 1.2em; display: grid; gap: 4px; }
+.reply-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+button.copy { font: inherit; font-size: 0.85rem; padding: 6px 14px; border-radius: 6px; border: 1px solid var(--accent); background: var(--accent); color: var(--surface); cursor: pointer; }
+button.copy:hover { filter: brightness(1.08); }
+button.copy:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.copy-status { font-size: 0.82rem; color: var(--muted); }
+
+ol.todo { margin: 0; padding-left: 1.3em; display: grid; gap: 8px; }
+footer { font-size: 0.82rem; color: var(--muted); display: grid; gap: 6px; border-top: 1px solid var(--rule); padding-top: 16px; }
+@media (max-width: 520px) { h1 { font-size: 1.6rem; } body { font-size: 14.5px; } .summary, .reply { padding: 16px; } }
+</style>
+
+<main>
+<header>
+  <div class="eyebrow">Revision run report · global_coastal_bc_analysis</div>
+  <h1>ブルーカーボン改訂解析報告</h1>
+  <p>沿岸ブルーカーボン生態系（海草・マングローブ・コンブ類）の2段階 MaxEnt モデルについて、査読対応の改訂版を実行した結果、見つかった問題への対応、頑健性の検証、コメントへの回答案をまとめます。</p>
+  <div class="meta">
+    <span>2026-10-29（第2版）</span>
+    <span>RTX サーバー（R 4.5.3, conda <code>gcbc</code>）</span>
+    <span>ブランチ <code>server-run-20261029</code></span>
+  </div>
+  <nav class="toc" aria-label="目次">
+    <a href="#findings">主な発見</a><a href="#design">1段階か2段階か</a><a href="#cap">種あたり上限</a><a href="#supp">補足解析</a><a href="#v5">v5 との対照</a><a href="#reply">回答文の下書き</a><a href="#todo">残課題</a>
+  </nav>
+</header>
+
+<div class="summary">
+  <div class="eyebrow">要点</div>
+  <ul>
+    <li><b>2段階設計で距離の寄与が大きく測れることは確認できましたが、原稿の書き方は強すぎました。</b>ブートストラップ50回の検証では、テスト側で距離をシャッフルしたときの AUC 低下が、2段階で 1段階より 0.06〜0.08 大きくなりました（海草・マングローブは95%区間が0を含まず、上限の設定を変えても同じ）。一方、距離を外して推定し直す方法では、同じ向きでも区間は0を含み、1段階でも距離の寄与はゼロではありません。「1段階では埋もれる」ではなく「2段階でおよそ2倍に測れる」が妥当です。</li>
+    <li><b>コメントの「濁度から温度影響を除けば1段階で済む」案は、効果がありませんでした。</b>Kd490 の残差を使っても、1段階モデルでの距離の寄与は増えません（差はほぼ0、4通りの上限すべてで同じ）。</li>
+    <li><b>v5 との数値のずれの原因を特定しました。</b>terra のバージョンで、同じ乱数シードでも背景点の抽出結果が変わります。v5 のコードを terra 1.8.86 で走らせると、原稿の Stage 1 AUC（0.834 / 0.880 / 0.914）が完全に再現しました。逆に言えば、背景点を引き直すだけで AUC が 0.03〜0.06 動きます。</li>
+    <li><b>v5 から続くシナリオの不具合を修正しました。</b>流量規制シナリオで距離の経路が予測に入っていませんでした。修正後の影響は v5 の約 1.5〜2 倍で、回答書での開示が必要です。</li>
+    <li><b>流出高（流量 ÷ 流域面積）はマングローブでのみ予測を改善しました。</b>ただし向きは「乾燥した流域で少ない」ではなく逆で、記録の偏りの可能性もあるため、主張ではなく手がかりとして扱います。</li>
+  </ul>
+</div>
+
+<section id="findings">
+  <h2>主な発見と対応</h2>
+  <div class="findings">
+
+    <div class="finding">
+      <h3>シナリオの距離経路が効いていなかった <span class="chip ok">修正済み</span></h3>
+      <p>PART 7 のダム規制シナリオは、河口付近で <code>dist_km</code> を伸ばして「機能的な隔離」を表しますが、モデルが読むのは <code>log_dist</code> で、これが再計算されていませんでした。そのため v5 では「距離経路のみ」のシナリオの変化がちょうど 0 で、複合シナリオは濁度経路だけの値でした。FigSc3（距離経路のみ）も平らだったはずです。</p>
+      <div class="well"><table>
+        <thead><tr><th>70% 規制での平均適合度の変化（種ごとの平均）</th><th class="num">海草</th><th class="num">マングローブ</th><th class="num">コンブ</th></tr></thead>
+        <tbody>
+          <tr><td>原稿 v5</td><td class="num">−8.3%</td><td class="num">−6.0%</td><td class="num">−3.1%</td></tr>
+          <tr><td>v5 のコード + terra 1.8.86（再現）</td><td class="num">−8.3%</td><td class="num">−6.0%</td><td class="num">−3.8%</td></tr>
+          <tr class="hl"><td>改訂版（修正後、上限 100）</td><td class="num">−10.1%</td><td class="num">−12.1%</td><td class="num">−5.7%</td></tr>
+        </tbody>
+      </table></div>
+      <p class="caption">修正後、距離経路だけで平均適合度が 0.006〜0.010 下がり、濁度経路（0.007〜0.015）と同程度の寄与になりました。</p>
+    </div>
+
+    <div class="finding">
+      <h3>v5 の数値がずれた原因は terra のバージョン <span class="chip ok">特定済み</span></h3>
+      <p>同じ <code>set.seed(42)</code> でも、terra 1.9.50 と 1.8.86 では <code>spatSample</code> が引く 20,000 点の背景点がまったく別物になります（水深フィルタ後で 1,183 点 vs 1,437 点）。v5 のコードを terra 1.8.86 で走らせると原稿の値が再現し、1.9.50 では再現しません。</p>
+      <div class="well"><table>
+        <thead><tr><th></th><th class="num">原稿 v5</th><th class="num">v5 コード + terra 1.8.86</th><th class="num">v5 コード + terra 1.9.50</th></tr></thead>
+        <tbody>
+          <tr><td>Stage 1 AUC 海草 / マングローブ / コンブ</td><td class="num">0.834 / 0.880 / 0.914</td><td class="num">0.834 / 0.880 / 0.914</td><td class="num">0.804 / 0.816 / 0.907</td></tr>
+          <tr><td>CV AUC 海草</td><td class="num">0.611 ± 0.104</td><td class="num">0.612 ± 0.099</td><td class="num">0.655 ± 0.099</td></tr>
+          <tr><td>CV AUC マングローブ</td><td class="num">0.687 ± 0.045</td><td class="num">0.681 ± 0.049</td><td class="num">0.700 ± 0.036</td></tr>
+          <tr><td>CV AUC コンブ</td><td class="num">0.749 ± 0.014</td><td class="num">0.742 ± 0.017</td><td class="num">0.719 ± 0.068</td></tr>
+        </tbody>
+      </table></div>
+      <p>小さな残差（CV AUC で 0.006 程度）は他のパッケージの版の違いと考えられます。より重要なのは、<b>背景点の引き直し1回で Stage 1 AUC が 0.03〜0.06、CV AUC が 0.02〜0.04 動く</b>という点です。原稿の数値は1つの環境でそろえたうえで、背景点の抽出を複数回繰り返した結果で示すのが安全です。</p>
+    </div>
+  </div>
+</section>
+
+<section id="design">
+  <h2>1段階か2段階か</h2>
+  <div class="callout">
+    <p><b>コメント：「濁度から水温の影響を分離できれば、1段階のモデルにできないか」</b></p>
+    <p>Kd490 を水温と |緯度| で回帰した残差（陸域由来の濁度）を作り、それを使った1段階モデルを、通常の1段階モデル・2段階モデルと比べました。</p>
+  </div>
+  <p>前回の比較は、学習データ上での1回きりの評価でした。今回は、在データと背景点のブートストラップ 50 回、空間ブロックの境界も毎回ずらして、すべてテスト側の AUC で評価しています。距離の寄与は2通りで測りました。</p>
+  <ul style="margin:0;padding-left:1.2em;display:grid;gap:4px">
+    <li><b>シャッフル</b>：学習したモデルのまま、テスト側で距離の値を入れ替えたときの AUC 低下。</li>
+    <li><b>除去・再推定</b>：距離を外してモデルを推定し直したときの AUC 低下。ほかの変数が肩代わりできない、距離固有の寄与を表します。</li>
+  </ul>
+
+  <div class="chart" role="figure" aria-label="設計ごとの河口距離の寄与（ΔAUC、中央値と95%区間）">
+    <div class="legend">
+      <span class="k"><svg width="22" height="10" aria-hidden="true"><line x1="1" y1="5" x2="21" y2="5" style="stroke:var(--s-one);stroke-width:2"/></svg>1段階</span>
+      <span class="k"><svg width="22" height="10" aria-hidden="true"><line x1="1" y1="5" x2="21" y2="5" style="stroke:var(--s-two);stroke-width:2"/></svg>2段階</span>
+      <span class="k"><svg width="12" height="12" aria-hidden="true"><circle cx="6" cy="6" r="4.5" style="fill:var(--muted)"/></svg>シャッフル</span>
+      <span class="k"><svg width="12" height="12" aria-hidden="true"><circle cx="6" cy="6" r="4" style="fill:var(--surface);stroke:var(--muted);stroke-width:2"/></svg>除去・再推定</span>
+    </div>
+    <div class="panels" id="forest"></div>
+    <p class="caption">河口距離の寄与（ΔAUC）の中央値と 95% 区間。ブートストラップ 50 回、上限 100 の本解析。各点にカーソルを合わせると値が出ます。「+残差」は Kd490 の代わりに陸域由来の濁度を使ったモデル。</p>
+  </div>
+
+  <div class="well"><table>
+    <thead><tr><th>同じ反復内での差（2段階 − 1段階）</th><th class="num"><span class="eco sg">海草</span></th><th class="num"><span class="eco mg">マングローブ</span></th><th class="num"><span class="eco kp">コンブ</span></th></tr></thead>
+    <tbody>
+      <tr class="hl"><td>シャッフル</td><td class="num">+0.078 [+0.024, +0.153]</td><td class="num">+0.061 [+0.030, +0.092]</td><td class="num">+0.080 [−0.039, +0.131]</td></tr>
+      <tr><td>除去・再推定</td><td class="num">+0.013 [−0.037, +0.095]</td><td class="num">+0.020 [−0.010, +0.050]</td><td class="num">+0.047 [−0.071, +0.141]</td></tr>
+      <tr><td>1段階: 残差あり − なし（シャッフル）</td><td class="num">−0.008 [−0.034, +0.038]</td><td class="num">−0.001 [−0.008, +0.004]</td><td class="num">−0.003 [−0.008, +0.002]</td></tr>
+    </tbody>
+  </table></div>
+  <p class="caption">中央値 [95% 区間]。上限 50 / 200 / なしでも同じパターン：シャッフルでの差は海草・マングローブで 4通りすべて区間が0を含まず、コンブは上限 200・なしで0を含まず、50・100 で境界的（0以下の反復が 6〜8%）。</p>
+
+  <p><b>読み方。</b>2段階にすると、距離の寄与はおよそ2倍に測れます。ただ、1段階モデルでも距離の寄与はゼロではなく、距離を外して推定し直すと塩分や濁度がある程度肩代わりするため、固有の寄与の差は区間が0を含みます。コメントの残差案は、1段階モデルの距離の寄与を増やしませんでした。1段階モデルの判別は「その気候に分布できるか」でほぼ決まり（CV AUC 0.85 前後）、分布域の中の河川勾配は、濁度をどう扱っても小さな成分にとどまるためと解釈できます。</p>
+  <p><b>原稿への反映。</b>「1段階では河川のシグナルが埋もれる（collapses）」は「2段階で距離の寄与がおよそ2倍に測れる」に改め、シャッフルと除去・再推定の両方を区間つきで示します。</p>
+</section>
+
+<section id="cap">
+  <h2>コンブ群と種あたり上限</h2>
+  <p>Akita et al. (2020) に従い、クロメ・ツルアラメを含むカジメ（<em class="sp">E. cava</em>）を追加したところ、コンブ群の 76% がカジメになりました。大半が日本・韓国の観察記録で、19.4 ± 1.6 °C の狭い温度帯に集中しています。そこで1種あたりの記録数に上限を設けました。上限を超える種は 1° 格子を順に巡って 1件ずつ残すので、残る記録は分布域全体に散らばります。</p>
+  <div class="well"><table>
+    <thead><tr><th>コンブ群</th><th class="num">上限なし</th><th class="num">上限 200</th><th class="num">上限 100（採用）</th><th class="num">上限 50</th></tr></thead>
+    <tbody>
+      <tr><td>在データ数</td><td class="num">1,677</td><td class="num">604</td><td class="num">504</td><td class="num">428</td></tr>
+      <tr><td>カジメの割合</td><td class="num">76%</td><td class="num">33%</td><td class="num">20%</td><td class="num">12%</td></tr>
+      <tr><td>水温</td><td class="num">17.6 ± 4.0 °C</td><td class="num">14.2 ± 4.8 °C</td><td class="num">13.3 ± 4.6 °C</td><td class="num">12.8 ± 4.5 °C</td></tr>
+      <tr><td>中央 |緯度|</td><td class="num">34.3°</td><td class="num">41.5°</td><td class="num">44.9°</td><td class="num">46.5°</td></tr>
+      <tr><td>CV AUC</td><td class="num">0.649</td><td class="num">0.708</td><td class="num">0.697</td><td class="num">0.713</td></tr>
+      <tr><td>Stage 1 AUC</td><td class="num">0.945</td><td class="num">0.902</td><td class="num">0.891</td><td class="num">0.890</td></tr>
+      <tr><td>距離 / 塩分の重要度</td><td class="num">57 / 29%</td><td class="num">68 / 19%</td><td class="num">72 / 18%</td><td class="num">72 / 22%</td></tr>
+      <tr><td>70% 規制</td><td class="num">−8.3%</td><td class="num">−7.1%</td><td class="num">−5.7%</td><td class="num">−8.0%</td></tr>
+    </tbody>
+  </table></div>
+  <p class="caption">上限 100 ではカジメ（1,273→100）とアマモ（173→100）だけが対象。上限 50 ではマングローブ3種・コンブ3種なども対象になる、より厳しい設定です。50〜200 の範囲では結果が安定し、外れているのは上限なしだけです。</p>
+  <div class="figpair">
+    <figure>
+      <img src="report_assets/occupancy_nocap.png" alt="上限なしの河口距離と占有率。コンブは 15〜20 km に山がある" loading="lazy">
+      <figcaption>上限なし：コンブ（青）は 15〜20 km に占有率の山。日本・韓国の観察密度によるもの。</figcaption>
+    </figure>
+    <figure>
+      <img src="report_assets/occupancy_cap100.png" alt="上限100の河口距離と占有率。コンブの山は消え、3群が同じような減衰を示す" loading="lazy">
+      <figcaption>上限 100：山は消え、3群とも河口から離れるほど占有率が下がる形に。</figcaption>
+    </figure>
+  </div>
+  <p>v5 の「cool-temperate to subpolar（11.9 ± 4.2 °C、49.7°）」は「temperate to subpolar（13.3 ± 4.6 °C）」に改める必要があります。</p>
+</section>
+
+<section id="supp">
+  <h2>補足解析（上限 100）</h2>
+
+  <h3>濁度の分解</h3>
+  <div class="well"><table>
+    <thead><tr><th>成分</th><th class="num">説明率</th></tr></thead>
+    <tbody>
+      <tr><td>合計（気候 + 河川）</td><td class="num">40.7%</td></tr>
+      <tr><td>気候だけが説明する分</td><td class="num">19.1%</td></tr>
+      <tr class="hl"><td>河川だけが説明する分</td><td class="num">23.0%</td></tr>
+      <tr><td>共有（打ち消し合い、実質 0）</td><td class="num">−1.4%</td></tr>
+    </tbody>
+  </table></div>
+  <p>残差モデル（R² = 0.224）では、流量が 10 倍になると陸域由来の濁度は 1.42 倍、河口距離が 10 倍になると 0.36 倍になります（どちらも p &lt; 10<sup>−15</sup>）。濁度の約4分の1は河川項だけで説明でき、考察ではこの割合を示せます。</p>
+
+  <h3>距離の関数形</h3>
+  <div class="well"><table>
+    <thead><tr><th>関数形</th><th class="num"><span class="eco sg">海草</span></th><th class="num"><span class="eco mg">マングローブ</span></th><th class="num"><span class="eco kp">コンブ</span></th><th class="num">平均</th></tr></thead>
+    <tbody>
+      <tr><td><code>log₁₀(d+1)</code>（現行）</td><td class="num">0.675</td><td class="num">0.689</td><td class="num">0.697</td><td class="num">0.687</td></tr>
+      <tr><td><code>1/(d+1)</code></td><td class="num">0.669</td><td class="num">0.684</td><td class="num">0.694</td><td class="num">0.682</td></tr>
+      <tr><td><code>exp(−d/50)</code></td><td class="num">0.683</td><td class="num">0.677</td><td class="num">0.706</td><td class="num">0.689</td></tr>
+    </tbody>
+  </table></div>
+  <p>差は最大 0.007 で、ばらつき（SD 0.05〜0.09）よりはるかに小さく、順位も実行ごとに入れ替わります。<code>log_dist</code> のまま据え置きます。</p>
+
+  <h3>河川の大きさ：流域面積・流量・流出高</h3>
+  <p>流出高は流量 ÷ 流域面積（mm/年）で、流域がどれだけ湿っているかを表します。大きくても乾燥した流域では低くなるので、コメントの「植生が乏しいのに流域だけ広い」状況を直接とらえる指標です。「どちらもなし」に対する CV AUC の上乗せを、同じ反復内で比べました。</p>
+  <div class="well"><table>
+    <thead><tr><th>上乗せする変数</th><th class="num"><span class="eco sg">海草</span></th><th class="num"><span class="eco mg">マングローブ</span></th><th class="num"><span class="eco kp">コンブ</span></th></tr></thead>
+    <tbody>
+      <tr><td>流域面積</td><td class="num">−0.012 [−0.040, +0.009]</td><td class="num">−0.003 [−0.019, +0.012]</td><td class="num">+0.011 [−0.032, +0.059]</td></tr>
+      <tr><td>流量</td><td class="num">+0.006 [−0.011, +0.041]</td><td class="num">−0.006 [−0.020, +0.000]</td><td class="num">−0.004 [−0.046, +0.036]</td></tr>
+      <tr><td>面積 + 流量</td><td class="num">+0.004 [−0.018, +0.054]</td><td class="num">+0.010 [−0.009, +0.027]</td><td class="num">+0.010 [−0.025, +0.057]</td></tr>
+      <tr class="hl"><td>流出高</td><td class="num">−0.005 [−0.039, +0.028]</td><td class="num">+0.025 [+0.007, +0.051]</td><td class="num">+0.021 [−0.010, +0.074]</td></tr>
+      <tr><td>流量 + 流出高</td><td class="num">+0.003 [−0.033, +0.055]</td><td class="num">+0.019 [−0.000, +0.043]</td><td class="num">+0.014 [−0.013, +0.063]</td></tr>
+    </tbody>
+  </table></div>
+  <p class="caption">中央値 [95% 区間]、ブートストラップ 50 回。log 流出高と log 流域面積の相関は r = −0.79、log 流量とは r = −0.21。</p>
+  <p>流量・面積はどの生態系でも上乗せがなく、「近さは効くが、河川の大きさは効かない」という結論は維持できます。流出高はマングローブでのみ区間が0を含みませんでした。ただし、マングローブの記録は同じ気候帯の背景より流出高が<b>低い</b>場所に多く（中央値 748 vs 1,090 mm/年）、「乾燥した流域で少ない」とは逆向きです。GBIF の記録が乾燥側の海岸（オーストラリア北部、紅海、フロリダなど）に偏っている可能性があり、主張にはせず手がかりとして1文で触れる程度が妥当です。</p>
+</section>
+
+<section id="v5">
+  <h2>v5 との対照</h2>
+  <div class="well"><table>
+    <thead><tr><th>項目</th><th class="num">原稿 v5</th><th class="num">v5 コード + terra 1.9.50</th><th class="num">改訂版（上限 100）</th></tr></thead>
+    <tbody>
+      <tr><td>水深フィルタ後の記録数 海草 / マングローブ / コンブ</td><td class="num">666 / 706 / 404</td><td class="num">666 / 706 / 404</td><td class="num">593 / 706 / 504</td></tr>
+      <tr><td>CV AUC 海草</td><td class="num">0.611 ± 0.104</td><td class="num">0.655 ± 0.099</td><td class="num">0.675 ± 0.082</td></tr>
+      <tr><td>CV AUC マングローブ</td><td class="num">0.687 ± 0.045</td><td class="num">0.700 ± 0.036</td><td class="num">0.689 ± 0.050</td></tr>
+      <tr><td>CV AUC コンブ</td><td class="num">0.749 ± 0.014</td><td class="num">0.719 ± 0.068</td><td class="num">0.697 ± 0.079</td></tr>
+      <tr><td>Stage 1 AUC 海草 / マングローブ / コンブ</td><td class="num">0.834 / 0.880 / 0.914</td><td class="num">0.804 / 0.816 / 0.907</td><td class="num">0.793 / 0.816 / 0.891</td></tr>
+      <tr><td>マングローブ 距離の重要度*</td><td class="num">47.4%</td><td class="num">52.3%</td><td class="num">56.4%</td></tr>
+      <tr><td>コンブ 塩分 / 距離*</td><td class="num">68.8 / 24.6%</td><td class="num">61.9 / 16.9%</td><td class="num">52.0 / 37.3%</td></tr>
+      <tr><td>海草 塩分 / 距離 / 濁度*</td><td class="num">15.4 / 14.7 / 13.4%</td><td class="num">11.1 / 13.6 / 7.2%</td><td class="num">13.8 / 14.2 / 7.7%</td></tr>
+      <tr><td>河川の大きさ*</td><td class="num">面積 0.3–3.3%</td><td class="num">面積 1.5–3.5%</td><td class="num">流量 1.6–2.5%</td></tr>
+      <tr><td>河口距離の中央値 マングローブ / コンブ / 海草</td><td class="num">31.8 / 33.0 / 43.7 km</td><td class="num">28.5 / 32.0 / 38.6 km</td><td class="num">28.5 / 33.2 / 39.7 km</td></tr>
+      <tr><td>河口での占有率 マングローブ / 海草 / コンブ</td><td class="num">0.98 / 0.81 / 0.48</td><td class="num">—</td><td class="num">≈ 0.99 / 0.80 / 0.56</td></tr>
+      <tr><td>占有率 0.50 の距離 マングローブ / 海草</td><td class="num">21 / 17 km</td><td class="num">—</td><td class="num">≈ 25 / 16 km</td></tr>
+      <tr><td>70% 規制 海草 / マングローブ / コンブ</td><td class="num">−8.3 / −6.0 / −3.1%</td><td class="num">−6.5 / −7.7 / −3.0%</td><td class="num">−10.1 / −12.1 / −5.7%</td></tr>
+    </tbody>
+  </table></div>
+  <p class="caption">* 1° 間引き後の種ごとモデルの中央値（FigSp1）。占有率は FigD4 からの読み取り。CV AUC は4ブロックの平均 ± SD。改訂そのものの効果は、同じ環境で走らせた中央列と右列の差で読みます。コンブ（カジメ追加と上限）、規制の影響（不具合修正）、河川の大きさ（面積→流量）以外は、ほぼ背景点の引き直しと同程度のずれです。</p>
+</section>
+
+<section id="reply">
+  <h2>コメントへの回答文（下書き）</h2>
+  <div class="reply" id="reply-text">
+    <div class="reply-bar">
+      <span class="eyebrow">そのまま貼れる形</span>
+      <span><button class="copy" id="copy-reply" type="button">本文をコピー</button> <span class="copy-status" id="copy-status" aria-live="polite"></span></span>
+    </div>
+    <div id="reply-body" style="display:grid;gap:14px">
+      <p>丁寧に読んでいただき、ありがとうございます。ご指摘のとおり、濁度・河口からの距離・流域面積の位置づけと、それぞれの影響過程の切り分けは、原稿で説明に苦慮していたところです。いただいた提案はほぼそのまま解析し、結果を以下にまとめました。</p>
+      <h4>1. 濁度から海洋側の影響を分離する</h4>
+      <p>ご提案どおり、濁度（Kd490）を水温と緯度で説明するモデル（GAM）を作り、その残差を「陸域由来の濁度」としました。濁度の変動のうち、水温・緯度だけで説明できる部分が約19%、河川の項（距離と流量）だけで説明できる部分が約23%で、両者の重なりはほぼありませんでした。陸域側の寄与は海洋側と同じくらい大きい、という形で考察に書く予定です。</p>
+      <h4>2. 残差 ~ 河川の大きさ + 河口からの距離（掛け算で）</h4>
+      <p>残差は対数尺度なので、この回帰はご指摘の掛け算（log リンク）のモデルになっています。流量が10倍になると陸域由来の濁度は約1.4倍、河口からの距離が10倍になると約0.36倍になりました（いずれも p &lt; 10⁻¹⁵）。</p>
+      <h4>3. 距離は 1/距離 のほうが拡散過程に合うのでは</h4>
+      <p>log(距離+1)、1/(距離+1)、指数減衰の3つを比べました。予測性能（空間ブロック交差検証の AUC）の差は最大 0.007 で、ばらつきの範囲内でした。結果はどの形を使っても変わらないので、本文は log のままにし、方法に1文加えます。</p>
+      <h4>4. 流域面積では流入量や栄養を表せない</h4>
+      <p>流域面積を、HydroRIVERS の年平均流量に置き換えました。流量でも面積でも、モデルへの上乗せは誤差の範囲で、「河口からの近さは効くが、河川の大きさは効かない」という結論は変わりませんでした。さらに「植生が乏しいのに流域だけ広い」状況を直接表す指標として、流出高（流量 ÷ 流域面積）も試したところ、マングローブでのみ予測が改善しました。ただし、マングローブの記録は同じ気候帯の背景より流出高の低い場所に多く、「乾燥した流域では少ない」という向きではありませんでした。記録の偏りの影響もありうるので、本文では手がかりとして触れる程度にとどめます。植生・農地・都市の割合を掛ける解析は RiverATLAS が必要なため、今回は行っていません。</p>
+      <h4>5. 塩分と栄養の間の「ワンクッション」</h4>
+      <p>ご指摘のとおりで、塩分は流入水量を反映しても、栄養の濃さは流域の性質に依存します。今回の解析ではそこまで切り分けられていないので、考察の限界として明記します。</p>
+      <h4>6. モデリングの手順と、1段階にできないか</h4>
+      <p>手順の説明が不十分でした。2つのモデルは別々に推定しています。</p>
+      <ul>
+        <li>第1段階：水温と緯度だけで、全沿岸の背景点に対して「その気候に分布できるか」（分布域）を推定。</li>
+        <li>第2段階：在データの水温・緯度の 5〜95% の範囲に背景点を絞り、同じ気候帯の中で塩分・濁度・河口距離・流量の効果を推定。</li>
+        <li>最終的な適合度は、両者の積です。</li>
+      </ul>
+      <p>ご提案の「濁度から温度の影響を除けば1段階にできるのでは」も検証しました。残差濁度を使った1段階モデル、通常の1段階モデル、2段階モデルを、ブートストラップ50回（空間ブロックの境界も毎回ずらす）で比べ、河口距離の寄与を「テスト側で距離をシャッフルしたときの AUC 低下」で測りました。2段階では1段階より距離の寄与が 0.06〜0.08 大きく（海草・マングローブでは95%区間が0を含まず、コンブは境界的）、残差濁度を使っても1段階モデルでの距離の寄与は増えませんでした。一方、1段階モデルでも距離の寄与はゼロではなく、距離を外して推定し直す方法では、同じ向きでも区間は0を含みました。</p>
+      <p>1段階モデルの判別は「その気候に分布できるか」でほとんど決まり、分布域の中での河川からの勾配は、濁度をどう扱っても小さな成分にとどまるため、と解釈しています。原稿の「1段階では河川のシグナルが埋もれる」という書き方は強すぎたので、「2段階にすると距離の寄与がおよそ2倍に測れる」という表現に改めます。</p>
+      <h4>7. 同じ緯度帯での比較</h4>
+      <p>第2段階の背景点を気候帯で絞っているのは、同じ気候の中で比べるためです。ただ、ご指摘のとおりマングローブとコンブは気候帯が重ならないので、3群を同じ緯度帯で直接比べることはできていません。</p>
+      <h4>8. カジメとホンダワラ類</h4>
+      <p>カジメは Akita et al. (2020) に従い、クロメ・ツルアラメを含めて追加しました。GBIF の分類体系ではこれらが種として扱われておらず、通常の検索では東アジアの記録がすべて落ちていたため、原記載名から 1,447 地点を回収しています。ただ、追加するとコンブ類の記録の76%がカジメ（ほぼ日本・韓国）になり、モデルがカジメ1種に引っ張られたため、1種あたり100件までに抑えました（50件、200件でも結果はほぼ同じです）。結果として、コンブ類の特徴づけは「cool-temperate to subpolar」から「temperate to subpolar」に変わります。ホンダワラ類は、属としては多様すぎるため見送りました。タマハハキモク（<em class="sp">Sargassum muticum</em>）単種なら追加できますが、移入種の分布をどう扱うかも含めてご意見をいただけると助かります。</p>
+      <h4>あわせてのご報告</h4>
+      <p>解析を見直す中で、流量規制シナリオで「河口距離の経路」が予測に反映されていない不具合が提出版にあったことが分かりました。修正すると、70%規制での適合度の低下は海草 −10%、マングローブ −12%、コンブ −6% 程度となり、提出版の値より 1.5〜2 倍大きくなります。回答書で開示します。</p>
+    </div>
+  </div>
+</section>
+
+<section id="todo">
+  <h2>残っている判断と作業</h2>
+  <ol class="todo">
+    <li><b>原稿の数値をどの環境でそろえるか。</b>terra 1.9.50（このサーバー）でそろえるのが推奨。v5 の値を残したいなら terra 1.8.86 で改訂版を走らせ直すこともできます。どちらにしても混ぜないこと。</li>
+    <li><b>背景点の抽出を複数回繰り返した結果で示すか。</b>引き直し1回で AUC が 0.03〜0.06 動くため、本文の主要な数値は 10 回程度の繰り返しの中央値と区間で示すのが安全です。</li>
+    <li><b>1段階 vs 2段階の書き方の修正。</b>「埋もれる」→「およそ2倍に測れる」。シャッフルと除去・再推定の両方を区間つきで。</li>
+    <li><b>回答書での不具合の開示。</b>v5 の規制シナリオは濁度経路のみで、影響を過小評価していた。</li>
+    <li><b>補足表 S1 の作り直し。</b>カジメの統合で、コンブの属・種の数が変わる。</li>
+    <li><b>ブランチの取り込み。</b><code>server-run-20261029</code> を main にマージするか（Mac 側のセッションと調整）。</li>
+    <li>任意：<em class="sp">Sargassum muticum</em> の追加、RiverATLAS による流域の土地利用の検討。</li>
+  </ol>
+</section>
+
+<footer>
+  <div>実行環境：RTX サーバー、R 4.5.3、terra 1.9.50（再現確認のみ 1.8.86）、sf 1.1.3、maxnet 0.1.4、xgboost 3.4.2.1。EOT20 潮汐データあり。</div>
+  <div>出力：<code>output/</code>（上限 100、本解析）、<code>output_cap50/</code>、<code>output_cap200/</code>、<code>output_capInf/</code>。頑健性は <code>R/03_robustness.R</code> → <code>TabS_robust_*.csv</code>。v5 再現は <code>../gcbc_v5_terra18/</code>。詳細は <code>RUN_NOTES.md</code>。</div>
+</footer>
+</main>
+
+<script>
+(function () {
+  // drop-variable ("drop") and permutation ("perm") ΔAUC: median, 2.5%, 97.5% — output/TabS_robust_design_summary.csv (cap 100, 50 reps)
+  var ROWS = [
+    { key: "1s",  label: "1段階",       two: false },
+    { key: "1sR", label: "1段階+残差",  two: false },
+    { key: "2s",  label: "2段階",       two: true },
+    { key: "2sR", label: "2段階+残差",  two: true }
+  ];
+  var DATA = {
+    "海草": { perm: { "1s": [0.045, -0.020, 0.082], "1sR": [0.037, -0.014, 0.077], "2s": [0.113, 0.083, 0.171], "2sR": [0.114, 0.077, 0.165] },
+              drop: { "1s": [0.044, -0.032, 0.101], "1sR": [0.023, -0.024, 0.059], "2s": [0.058, 0.018, 0.098], "2sR": [0.055, 0.023, 0.093] } },
+    "マングローブ": { perm: { "1s": [0.059, 0.036, 0.083], "1sR": [0.057, 0.034, 0.084], "2s": [0.122, 0.083, 0.167], "2sR": [0.131, 0.093, 0.173] },
+              drop: { "1s": [0.026, 0.009, 0.043], "1sR": [0.023, 0.006, 0.041], "2s": [0.046, 0.013, 0.070], "2sR": [0.053, 0.012, 0.084] } },
+    "コンブ": { perm: { "1s": [0.056, 0.040, 0.084], "1sR": [0.054, 0.036, 0.079], "2s": [0.146, 0.033, 0.197], "2sR": [0.139, 0.036, 0.201] },
+              drop: { "1s": [0.038, 0.023, 0.060], "1sR": [0.032, 0.017, 0.054], "2s": [0.085, -0.014, 0.164], "2sR": [0.076, -0.027, 0.167] } }
+  };
+  var ECO_CLASS = { "海草": "sg", "マングローブ": "mg", "コンブ": "kp" };
+  var W = 300, L = 70, R = 290, TOP = 6, ROWH = 32, AX = 22;
+  var XMIN = -0.05, XMAX = 0.21, TICKS = [0, 0.05, 0.10, 0.15, 0.20];
+  var H = TOP + ROWS.length * ROWH + AX;
+  function x(v) { return L + (v - XMIN) / (XMAX - XMIN) * (R - L); }
+  function el(tag, attrs, parent) {
+    var e = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+  function fmt(v) { return (v < 0 ? "−" : "") + Math.abs(v).toFixed(3); }
+  var host = document.getElementById("forest");
+  Object.keys(DATA).forEach(function (eco) {
+    var panel = document.createElement("div"); panel.className = "panel";
+    var h = document.createElement("h4"); h.className = "eco " + ECO_CLASS[eco]; h.textContent = eco; panel.appendChild(h);
+    var svg = el("svg", { viewBox: "0 0 " + W + " " + H, role: "img", "aria-label": eco + "の設計別 ΔAUC" });
+    TICKS.forEach(function (t) {
+      el("line", { x1: x(t), x2: x(t), y1: TOP, y2: TOP + ROWS.length * ROWH, "class": t === 0 ? "zero" : "grid" }, svg);
+      var tx = el("text", { x: x(t), y: H - 6, "text-anchor": "middle", "class": "tick" }, svg);
+      tx.textContent = t === 0 ? "0" : t.toFixed(2);
+    });
+    ROWS.forEach(function (row, i) {
+      var cy = TOP + i * ROWH + ROWH / 2;
+      var lab = el("text", { x: 4, y: cy + 3.5, "class": "row" }, svg); lab.textContent = row.label;
+      var fam = row.two ? "two" : "one";
+      [["perm", -6, false], ["drop", 6, true]].forEach(function (m) {
+        var d = DATA[eco][m[0]][row.key], y = cy + m[1];
+        el("line", { x1: x(d[1]), x2: x(d[2]), y1: y, y2: y, "class": "ci-" + fam }, svg);
+        el("circle", { cx: x(d[0]), cy: y, r: m[2] ? 4 : 4.5, "class": (m[2] ? "pt-open-" : "pt-") + fam }, svg);
+        var hit = el("rect", { x: x(d[1]) - 4, y: y - 6, width: Math.max(12, x(d[2]) - x(d[1]) + 8), height: 12, "class": "hit" }, svg);
+        var tt = el("title", {}, hit);
+        tt.textContent = eco + " · " + row.label + " · " + (m[0] === "perm" ? "シャッフル" : "除去・再推定") + "：" + fmt(d[0]) + " [" + fmt(d[1]) + ", " + fmt(d[2]) + "]";
+      });
+    });
+    panel.appendChild(svg);
+    host.appendChild(panel);
+  });
+
+  var btn = document.getElementById("copy-reply"), status = document.getElementById("copy-status");
+  var body = document.getElementById("reply-body");
+  btn.addEventListener("click", function () {
+    var text = body.innerText.replace(/\n{3,}/g, "\n\n").trim();
+    function fallback() {
+      var range = document.createRange(); range.selectNodeContents(body);
+      var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+      status.textContent = "選択しました。⌘C / Ctrl+C でコピーしてください";
+    }
+    try {
+      navigator.clipboard.writeText(text).then(function () { status.textContent = "コピーしました"; }, fallback);
+    } catch (e) { fallback(); }
+  });
+})();
+</script>

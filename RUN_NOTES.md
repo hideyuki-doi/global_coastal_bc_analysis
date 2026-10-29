@@ -52,6 +52,9 @@ maxnet 0.1.4, xgboost 3.4.2.1, ranger 0.18.0; EOT20 tides present).
 | 2026-10-29 | v5 code (`f5593e1`) on the same server | done | reference for "what the revision changed" (§3g); worktree `../gcbc_v5_baseline` |
 | 2026-10-29 | run 2 — scenario fix + per-species cap 100 | done | **main results**, `output/` |
 | 2026-10-29 | sensitivity — cap 200, no cap | done | `output_cap200/`, `output_capInf/` |
+| 2026-10-29 | sensitivity — cap 50 | done | `output_cap50/` |
+| 2026-10-29 | `R/03_robustness.R`, 50 bootstrap replicates, caps 50/100/200/none | done | §3h–3i; `TabS_robust_*.csv` |
+| 2026-10-29 | v5 code + terra 1.8.86 (side library) | done | reproduces the v5 manuscript (§3g); worktree `../gcbc_v5_terra18` |
 
 Environment notes: conda-forge GDAL needs `libgdal-hdf5 libgdal-netcdf` or terra
 cannot open the EOT20 `.nc` files (run halts at the tidal step). Running three
@@ -191,6 +194,10 @@ dominated by the range question (where the climate allows the group at all),
 and the within-range river gradient is a small part of that discrimination
 whatever is done to turbidity. Same pattern in every cap setting.
 
+> **Superseded by §3h.** These are training-data numbers from one background
+> draw. Out of sample with 50 bootstrap replicates the gap is about 2×, not
+> 2–3×, and the refit-based contrast includes zero.
+
 ---
 
 ### 3e. Scenario bug (new)
@@ -240,21 +247,83 @@ The kelp group is now temperate to subpolar rather than
 "cool-temperate to subpolar" (13.3 ± 4.6 °C, median |lat| 44.9°); the v5
 wording has to change.
 
-### 3g. Stage 1 AUC drift (new)
+### 3g. Stage 1 AUC drift — cause found (new)
 
 Run 1 gave seagrass and mangrove Stage 1 AUC 0.804 / 0.816 against v5's
 0.834 / 0.880, although the revision does not touch those groups' Stage 1
-inputs (SST, lat). The v5 code itself (`f5593e1`) run on this server gives the
-same 0.804 / 0.816, and its other headline numbers also miss the v5 anchors
-(CV AUC 0.655 / 0.700 / 0.719 vs 0.611 / 0.687 / 0.749). So the drift is the
-environment, not the revision. Leading suspect: the 20,000 background points
-from `terra::spatSample` under `set.seed(42)` differ between terra 1.8.86
-(RStudio Server) and 1.9.50 (here); the depth filter keeps 1,183 of them here.
+inputs. The v5 code itself (`f5593e1`) gives the same 0.804 / 0.816 under
+terra 1.9.50. Cause: `terra::spatSample` draws a completely different set of
+20,000 background points for the same `set.seed(42)` in terra 1.8.86
+(RStudio Server) and 1.9.50 (here) — 1,437 vs 1,183 survive the depth filter.
 
-Consequence: the v5 manuscript numbers cannot serve as the "before" for the
-revision. The fair comparison is v5 code vs revised code in one environment
-(column 2 vs 3 in §4), and every number in the revised manuscript should come
-from one environment.
+Confirmed by running the v5 code with terra 1.8.86 built into a side library
+(`~/R/terra18_lib`; needs `PKG_CXXFLAGS=-fpermissive` against GDAL 3.13):
+
+| | v5 manuscript | v5 code + terra 1.8.86 | v5 code + terra 1.9.50 |
+|---|---|---|---|
+| Stage 1 AUC sg / mg / kp | 0.834 / 0.880 / 0.914 | 0.834 / 0.880 / 0.914 | 0.804 / 0.816 / 0.907 |
+| CV AUC sg | 0.611 ± 0.104 | 0.612 ± 0.099 | 0.655 ± 0.099 |
+| CV AUC mg | 0.687 ± 0.045 | 0.681 ± 0.049 | 0.700 ± 0.036 |
+| CV AUC kp | 0.749 ± 0.014 | 0.742 ± 0.017 | 0.719 ± 0.068 |
+| 70% regulation sg / mg / kp | −8.3 / −6.0 / −3.1% | −8.3 / −6.0 / −3.8% | −6.5 / −7.7 / −3.0% |
+
+The point that matters for the paper: one background redraw moves Stage 1 AUC
+by 0.03–0.06 and CV AUC by 0.02–0.04. Headline numbers should be the median
+over several background draws, from one environment.
+
+### 3h. Robustness of the design comparison (new, `R/03_robustness.R`)
+
+50 replicates, each with presences and background resampled with replacement
+and the four longitude blocks rotated by a random offset; everything scored on
+the held-out block; designs paired within a replicate. Distance contribution
+measured two ways: permutation on the held-out block, and drop-variable
+(refit without distance).
+
+Paired difference, two-stage minus one-stage, cap 100 (median [95% interval]):
+
+| metric | seagrass | mangrove | kelp |
+|---|---|---|---|
+| permutation ΔAUC | +0.078 [+0.024, +0.153] | +0.061 [+0.030, +0.092] | +0.080 [−0.039, +0.131] |
+| drop-variable ΔAUC | +0.013 [−0.037, +0.095] | +0.020 [−0.010, +0.050] | +0.047 [−0.071, +0.141] |
+| 1-stage Kd residual minus 1-stage (perm.) | −0.008 [−0.034, +0.038] | −0.001 [−0.008, +0.004] | −0.003 [−0.008, +0.002] |
+
+Same pattern at caps 50, 200 and none (`output_cap*/TabS_robust_design_contrasts.csv`):
+the permutation contrast excludes zero for seagrass and mangrove in all four,
+for kelp at cap 200 and none (borderline, p≤0 = 0.06–0.08, at 50 and 100).
+
+**Decision.** The in-sample result of §3d (2–3× on raw ΔAUC) overstated the
+case. Out of sample, distance is worth about twice as much in stage 2 by
+permutation; the unique (refit) contribution points the same way but its
+interval includes zero, and distance is detectable in the one-stage model too.
+The manuscript's "the river signal collapses in one stage" becomes "the
+two-stage design measures about twice the distance contribution". The
+reviewer's Kd-residual one-stage model does not help — robust everywhere.
+
+### 3i. Runoff depth (new)
+
+log10(discharge / catchment area, mm per year + 1). r = −0.79 with log area,
+−0.21 with log discharge. CV AUC gain over `none`, 50 replicates, cap 100:
+
+| set | seagrass | mangrove | kelp |
+|---|---|---|---|
+| area | −0.012 [−0.040, +0.009] | −0.003 [−0.019, +0.012] | +0.011 [−0.032, +0.059] |
+| discharge | +0.006 [−0.011, +0.041] | −0.006 [−0.020, +0.000] | −0.004 [−0.046, +0.036] |
+| both | +0.004 [−0.018, +0.054] | +0.010 [−0.009, +0.027] | +0.010 [−0.025, +0.057] |
+| runoff | −0.005 [−0.039, +0.028] | **+0.025 [+0.007, +0.051]** | +0.021 [−0.010, +0.074] |
+| discharge + runoff | +0.003 [−0.033, +0.055] | +0.019 [−0.000, +0.043] | +0.014 [−0.013, +0.063] |
+
+Mangrove presences sit at LOWER runoff than climate-matched background
+(median 748 vs 1,090 mm/yr; kelp the reverse, 841 vs 507). So the gain is not
+"arid catchments exclude mangroves", and GBIF's lean toward dry coasts
+(N Australia, Red Sea, Florida) could produce it. One sentence as a lead, not a
+claim. River size (area, discharge) still adds nothing anywhere.
+
+### 3j. Cap 50 (new)
+
+Touches eight species (incl. three mangroves). Kelp: 428 presences, *E. cava*
+12%, 12.8 ± 4.5 °C, |lat| 46.5°, CV AUC 0.713, Stage 1 0.890, distance /
+salinity 72 / 22%, 70% regulation −8.0%. Caps 50–200 agree; no cap is the
+outlier.
 
 ---
 
@@ -294,9 +363,13 @@ move within noise.
 - [x] River-size claim stands, now on discharge (§3c)
 - [x] Kelp group — per-species cap 100, caps 200 and none as sensitivity (§3f)
 - [x] Scenario distance pathway — fixed (§3e)
-- [ ] **One environment for all manuscript numbers** (§3g). Recommend: take
-      every number from this server and record its session info; or rerun
-      v5 + revision on RStudio Server and use that. Not a mix.
+- [ ] **One environment for all manuscript numbers** (§3g — cause now known:
+      terra version changes the background draw). Recommend terra 1.9.50 here;
+      or rerun the revision under terra 1.8.86 to keep v5's draw. Not a mix.
+- [ ] **Report headline numbers over several background draws** (§3g): one
+      redraw moves AUC by 0.03–0.06.
+- [ ] **Soften the one-stage claim** (§3h): "about twice", with both
+      permutation and drop-variable intervals.
 - [ ] Response letter: disclose the scenario bug and the corrected regulation
       effects (§3e)
 - [ ] Taxonomy table (Supplementary Table S1) — regenerate with the merged
@@ -321,7 +394,7 @@ move within noise.
 | Results — scenarios | regulation effects ~1.5–2× larger; FigSc3 no longer flat |
 | Results — new paragraph | turbidity decomposition |
 | Discussion — turbidity | replace "hard to interpret" hedging with the measured split |
-| Discussion — design | one-stage comparison as evidence (raw ΔAUC), not assertion |
+| Discussion — design | one-stage comparison as evidence, with intervals (§3h); "about twice", not "collapses" |
 | Kelp characterisation | "cool-temperate to subpolar" → temperate to subpolar (13.3 ± 4.6 °C) |
 | Supplementary | Table S1 regenerated; TabS_* and FigR1/FigR2 added; cap sensitivity table |
 | References | Akita et al. 2020 *Phycologia* 59:330–339; Freckleton 2002 *J. Anim. Ecol.* 71:542–545 |
