@@ -41,7 +41,7 @@ if (HAS_SHAP) { library(fastshap); library(shapviz) } else {
 # repository existed) is still accepted, and data/ wins if both are present.
 BC_RDS  <- c("data/bc_analysis.rds", "bc_analysis.rds")
 BC_RDS  <- BC_RDS[file.exists(BC_RDS)][1]
-OUT_DIR <- "output"             # figures saved here
+OUT_DIR <- Sys.getenv("BC_OUT_DIR", "output")   # figures saved here
 dir.create(OUT_DIR,    showWarnings = FALSE)
 dir.create("sdm_data", showWarnings = FALSE)
 
@@ -561,6 +561,50 @@ message(sprintf("  Depth filter (<=%.0f m): bc %d → %d records (%.0f%% kept)",
                 MAX_DEPTH_M, n_bc_before, nrow(bc), 100 * nrow(bc) / n_bc_before))
 message(sprintf("  Depth for bc: median %.0f m | max %.0f m | n_zero %d",
                 median(bc$depth), max(bc$depth), sum(bc$depth == 0)))
+
+# ── Per-species record cap ───────────────────────────────────────────────────
+# Each ecosystem model pools its species, so a species with many more records
+# than the rest defines the group. After the Ecklonia merge, E. cava alone is
+# ~3/4 of the kelp presences (1,273 of 1,677), almost all from Japan and Korea,
+# and the kelp models then describe E. cava rather than kelp. Records above
+# SP_CAP per species are dropped by a round-robin over 1-degree cells (one
+# record per occupied cell in random order, then a second, ...), so the kept
+# records stay spread across the species' range instead of following
+# observer density. Genus-only records (no species name) are left as they are.
+# maxnet has no case-weight argument, which is why this is a cap, not a weight.
+# Set BC_SP_CAP=Inf to switch it off (sensitivity runs).
+SP_CAP <- as.numeric(Sys.getenv("BC_SP_CAP", "100"))
+.spc_cap <- intersect(c("species","Species","scientificName","taxon"), names(bc))[1]
+if (is.finite(SP_CAP) && !is.na(.spc_cap)) {
+  set.seed(42)
+  .cap_one <- function(d) {
+    if (nrow(d) <= SP_CAP) return(d)
+    d    <- d[sample(nrow(d)), , drop = FALSE]
+    cell <- paste(floor(d$lon), floor(d$lat))
+    rk   <- stats::ave(seq_len(nrow(d)), cell, FUN = seq_along)
+    d[order(rk), , drop = FALSE][seq_len(SP_CAP), , drop = FALSE]
+  }
+  .sp     <- bc[[.spc_cap]]
+  .named  <- !is.na(.sp) & nzchar(.sp)
+  .n_sp   <- table(.sp[.named])
+  .over   <- .n_sp[.n_sp > SP_CAP]
+  if (length(.over) > 0) {
+    n_bc_before_cap <- nrow(bc)
+    bc <- dplyr::bind_rows(
+      bc[!.named, , drop = FALSE],
+      dplyr::bind_rows(lapply(split(bc[.named, , drop = FALSE], .sp[.named]), .cap_one))
+    )
+    message(sprintf("  Per-species cap (%d): %s", SP_CAP,
+      paste(sprintf("%s %d→%d", names(.over), as.integer(.over), as.integer(SP_CAP)),
+            collapse = "; ")))
+    message(sprintf("  bc after cap: %d → %d records", n_bc_before_cap, nrow(bc)))
+    print(table(bc$Type))
+  } else {
+    message(sprintf("  Per-species cap (%d): no species above the cap", SP_CAP))
+  }
+} else {
+  message("  Per-species cap: off")
+}
 
 # =============================================================================
 # PART 2 — GAM WITH SPATIAL SMOOTH  [DISABLED — not used in final analysis]
@@ -2404,6 +2448,11 @@ for (sc_name in names(SCENARIOS)) {
       Kd490   = if (sc$kd) pmax(Kd490   * (1 - sc$f * decay), 1e-4) else Kd490,
       dist_km = if (sc$dk) dist_km * (1 + sc$f * decay)             else dist_km
     )
+  # The model reads DIST_VAR, not dist_km: rebuild it from the scenario
+  # distance, or the distance pathway never reaches the prediction. (Up to v5
+  # this line was missing, so dist↑ only returned exactly zero change and the
+  # combined scenarios carried the Kd490 pathway alone.)
+  wg[[DIST_VAR]] <- km_to_dist(wg$dist_km)
   Xs <- as.matrix(wg[, FEAT]); colnames(Xs) <- FEAT
   for (tp in ECO_LVLS) {
     wg[[paste0("suit_", tp)]] <-
@@ -2492,6 +2541,7 @@ if (exists("sp_models") && length(sp_models) > 0) {
           dist_km = if (sc$dk) dist_km * (1 + sc$f * decay)             else dist_km
         ) |>
         dplyr::filter(dist_km_baseline <= coast_thresh)
+      wg_s[[DIST_VAR]] <- km_to_dist(wg_s$dist_km)   # as in the main scenario loop
       Xw_s <- as.matrix(wg_s[, FEAT]); colnames(Xw_s) <- FEAT
       suit_s <- predict(mx_s, as.data.frame(Xw_s), type = "cloglog") |> as.numeric()
       tibble::tibble(sc_name = sc_name, Type = tp_s, Species = spp_s,

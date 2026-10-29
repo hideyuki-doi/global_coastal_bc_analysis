@@ -94,20 +94,29 @@ fit_stage2 <- function(tp, feats, data_pres = bc, data_bg = bg_df,
     auc[b] <- as.numeric(pROC::auc(te$presence, p, quiet = TRUE))
   }
 
-  # permutation importance, as a share of the total
+  # permutation importance: AUC lost when a variable is shuffled, averaged over
+  # N_PERM shuffles. Kept both raw (ΔAUC) and as a share of the total. The share
+  # depends on how many other predictors compete for it — a 6-variable
+  # one-stage model and a 4-variable stage-2 model split 100% differently even
+  # if distance carries the same signal — so design comparisons (8d) should be
+  # read on the raw ΔAUC.
+  N_PERM <- 10
   base <- as.numeric(pROC::auc(y, as.numeric(predict(mod, X, type = "cloglog")),
                                quiet = TRUE))
-  imp <- sapply(keep, function(v) {
-    Xp <- X; Xp[[v]] <- sample(Xp[[v]])
-    max(0, base - as.numeric(pROC::auc(y,
-      as.numeric(predict(mod, Xp, type = "cloglog")), quiet = TRUE)))
+  imp_raw <- sapply(keep, function(v) {
+    mean(replicate(N_PERM, {
+      Xp <- X; Xp[[v]] <- sample(Xp[[v]])
+      max(0, base - as.numeric(pROC::auc(y,
+        as.numeric(predict(mod, Xp, type = "cloglog")), quiet = TRUE)))
+    }))
   })
-  imp <- imp / max(sum(imp), 1e-9)
-  full <- setNames(rep(0, length(feats)), feats); full[keep] <- imp
+  imp <- imp_raw / max(sum(imp_raw), 1e-9)
+  full     <- setNames(rep(0, length(feats)), feats); full[keep]     <- imp
+  full_raw <- setNames(rep(0, length(feats)), feats); full_raw[keep] <- imp_raw
 
   list(Type = tp, auc_mean = mean(auc, na.rm = TRUE),
        auc_sd = sd(auc, na.rm = TRUE), auc_train = base,
-       n_pres = sum(y), importance = full)
+       n_pres = sum(y), importance = full, importance_raw = full_raw)
 }
 
 imp_table <- function(fits, label) {
@@ -115,6 +124,7 @@ imp_table <- function(fits, label) {
     tibble::tibble(model = label, Type = f$Type,
                    Variable = names(f$importance),
                    Importance = as.numeric(f$importance),
+                   dAUC = as.numeric(f$importance_raw),
                    AUC_cv = f$auc_mean, AUC_cv_sd = f$auc_sd,
                    AUC_train = f$auc_train, n_pres = f$n_pres)))
 }
@@ -271,6 +281,16 @@ dist_share <- stage_res |>
 message("\n  importance share of river distance, by design:")
 print(as.data.frame(dist_share))
 R8$dist_share <- dist_share
+
+# The same comparison on the raw scale: AUC lost when distance is shuffled.
+# Unlike the share, this does not shrink just because SST and lat are added.
+dist_dauc <- stage_res |>
+  dplyr::filter(Variable %in% c(DIST_VAR, "log_dist", "inv_dist", "exp_dist")) |>
+  dplyr::select(model, Type, dAUC) |>
+  tidyr::pivot_wider(names_from = Type, values_from = dAUC)
+message("\n  AUC lost when river distance is permuted (raw ΔAUC), by design:")
+print(as.data.frame(dist_dauc))
+R8$dist_dauc <- dist_dauc
 
 # ═════════════════════════════════════════════════════════════════════════════
 # FIGURES
