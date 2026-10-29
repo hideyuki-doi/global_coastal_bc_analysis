@@ -11,8 +11,8 @@ Started: 2026-10-29
 
 ```bash
 cd global_coastal_bc_analysis
+git pull                              # brings data/bc_analysis.rds
 bash scripts/get_external_data.sh     # skips anything already present
-cp /path/to/bc_analysis.rds .
 Rscript R/blue_carbon_full.R 2>&1 | tee output/run_$(date +%Y%m%d).log
 ```
 
@@ -21,8 +21,11 @@ Run from the repository root. The script resolves `data/`, `output/` and
 find them it prints a skip message and carries on rather than stopping — so a
 run from the wrong directory looks like it worked.
 
-`data/ecklonia_records.csv` ships with the repository; `R/01_ecklonia_gbif.R`
-only needs rerunning to refresh it from GBIF.
+`data/bc_analysis.rds` and `data/ecklonia_records.csv` both ship with the
+repository; `R/01_ecklonia_gbif.R` only needs rerunning to refresh the latter
+from GBIF. The log's first lines print `Occurrence table: data/bc_analysis.rds`
+— if it names the root copy instead, `data/bc_analysis.rds` is missing (the
+pull did not bring it) and the run is using whatever old copy sits in the root.
 
 Budget: the main pipeline as before, plus 10–20 min for PART 8 (≈165 maxnet
 fits: 3 ecosystems × 11 model specifications × 5 fits each).

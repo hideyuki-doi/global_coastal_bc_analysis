@@ -11,8 +11,9 @@ output/overwater_dist*.tif
 *.tif
 !output/**/*.png
 
-# Upstream occurrence table (produced before this repository)
-bc_analysis.rds
+# A stray copy of the occurrence table in the root is ignored; the versioned
+# copy lives in data/bc_analysis.rds
+/bc_analysis.rds
 
 # R session cruft
 .Rproj.user/

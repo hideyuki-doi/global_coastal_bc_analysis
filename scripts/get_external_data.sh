@@ -54,10 +54,6 @@ cat <<'EOF'
 
 Still needed, and not fetched by this script:
 
-  bc_analysis.rds   the screened GBIF occurrence table with Bio-ORACLE
-                    predictors attached, produced upstream of this repository.
-                    Place it in the repository root.
-
   EOT20 ocean tides (optional, ~2 GB) — only used for the tidal-range
   predictor, which the models drop when it is absent. Register and download
   from https://doi.org/10.17882/79489, then place ocean_tides.zip in the root.

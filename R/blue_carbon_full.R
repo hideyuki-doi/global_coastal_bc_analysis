@@ -35,14 +35,20 @@ if (HAS_SHAP) { library(fastshap); library(shapviz) } else {
 }
 
 # ── 1. Paths — edit only if your files are elsewhere ─────────────────────────
-BC_RDS  <- "bc_analysis.rds"    # upload to working directory (getwd())
+# bc_analysis.rds — the screened GBIF occurrence table with Bio-ORACLE
+# predictors attached. It is versioned in data/ so a fresh clone runs without a
+# manual upload; a copy in the working directory (the arrangement before this
+# repository existed) is still accepted, and data/ wins if both are present.
+BC_RDS  <- c("data/bc_analysis.rds", "bc_analysis.rds")
+BC_RDS  <- BC_RDS[file.exists(BC_RDS)][1]
 OUT_DIR <- "output"             # figures saved here
 dir.create(OUT_DIR,    showWarnings = FALSE)
 dir.create("sdm_data", showWarnings = FALSE)
 
-if (!file.exists(BC_RDS))
-  stop("bc_analysis.rds not found. Current dir: ", getwd(),
-       "\nUpload the file via RStudio Files pane → Upload.")
+if (is.na(BC_RDS))
+  stop("bc_analysis.rds not found in data/ or in ", getwd(),
+       "\nRun from the repository root after `git pull`, or place the file in data/.")
+message("Occurrence table: ", BC_RDS)
 
 # ── 2. Shared theme & save helper ─────────────────────────────────────────────
 ECO_PAL  <- c(Seagrass = "#009E73", Mangrove = "#E69F00", Kelp = "#0072B2")

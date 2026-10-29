@@ -19,9 +19,9 @@ Rscript R/01_ecklonia_gbif.R     # once: recover the Ecklonia cava complex
 Rscript R/blue_carbon_full.R     # main pipeline; sources R/02_reviewer_analyses.R
 ```
 
-`blue_carbon_full.R` expects `bc_analysis.rds` (the screened GBIF occurrence
-table with Bio-ORACLE predictors attached) in the working directory, and the
-external datasets listed below. It writes figures and tables to `output/`.
+`blue_carbon_full.R` reads the occurrence table from `data/bc_analysis.rds`
+(versioned here) and needs the external datasets listed below. Run it from the
+repository root. It writes figures and tables to `output/`.
 
 Runtime is dominated by the over-water distance surface and the species-level
 models; budget a few hours on a first run, less afterwards because the distance
@@ -149,7 +149,9 @@ R/02_reviewer_analyses.R    PART 8: the four analyses described above
 R/blue_carbon_figures.R     standalone figure rebuilds
 R/peninsula_check.R         over-water vs great-circle distance diagnostic
 scripts/get_external_data.sh  download the third-party datasets
-data/                       derived data small enough to version
+data/bc_analysis.rds        screened occurrence table (pipeline input)
+data/ecklonia_records.csv   recovered Ecklonia cava complex (R/01)
+data/                       other derived tables
 output/                     figures and tables (written by the pipeline)
 ```
 
@@ -168,8 +170,20 @@ under their own licences. `scripts/get_external_data.sh` fetches them.
 | [MARSPEC MS_bathy_5m](http://www.marspec.org/) via `sdmpredictors` | bathymetry | — | CC BY-NC-SA 3.0 |
 | [EOT20 ocean tides](https://doi.org/10.17882/79489) | tidal range (optional) | ~2 GB | CC BY 4.0 |
 
-`bc_analysis.rds` — the screened occurrence table — is produced upstream and is
-not in this repository.
+### Occurrence data
+
+`data/bc_analysis.rds` is the screened occurrence table: GBIF records for the 25
+target genera after coordinate, marine-position, depth and predictor-completeness
+screening, with Bio-ORACLE SST, salinity and Kd490 attached. The pipeline
+recomputes depth, river-mouth distance, discharge and catchment area itself, so
+those columns in the file, if present, are overwritten.
+
+The underlying records come from GBIF and remain subject to the
+[GBIF data user agreement](https://www.gbif.org/terms/data-user): cite the
+source datasets. Because the records were retrieved through the search API
+rather than a GBIF download, there is no download DOI; register the occurrence
+keys as a [derived dataset](https://www.gbif.org/derived-dataset/about) to
+obtain one before publication.
 
 ---
 
