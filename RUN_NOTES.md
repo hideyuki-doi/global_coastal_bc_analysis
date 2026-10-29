@@ -55,6 +55,7 @@ maxnet 0.1.4, xgboost 3.4.2.1, ranger 0.18.0; EOT20 tides present).
 | 2026-10-29 | sensitivity — cap 50 | done | `output_cap50/` |
 | 2026-10-29 | `R/03_robustness.R`, 50 bootstrap replicates, caps 50/100/200/none | done | §3h–3i; `TabS_robust_*.csv` |
 | 2026-10-29 | v5 code + terra 1.8.86 (side library) | done | reproduces the v5 manuscript (§3g); worktree `../gcbc_v5_terra18` |
+| 2026-10-30 | `R/04_structural.R`, co-author's structural model, 50 replicates | done | §3k |
 
 Environment notes: conda-forge GDAL needs `libgdal-hdf5 libgdal-netcdf` or terra
 cannot open the EOT20 `.nc` files (run halts at the tidal step). Running three
@@ -324,6 +325,33 @@ Touches eight species (incl. three mangroves). Kelp: 428 presences, *E. cava*
 12%, 12.8 ± 4.5 °C, |lat| 46.5°, CV AUC 0.713, Stage 1 0.890, distance /
 salinity 72 / 22%, 70% regulation −8.0%. Caps 50–200 agree; no cap is the
 outlier.
+
+---
+
+### 3k. Co-author's structural model (new, `R/04_structural.R`, 2026-10-30)
+
+Proposal: salinity carries land input, S = S_ref − c·B^β·exp(−D/L); turbidity
+log K = a0 + a1·S + a2·T + σk with σk read as ocean-derived; SDM on T, S, σk
+with D and B acting only through S. S_ref = 90th percentile of Bio-ORACLE
+salinity in a 2° block (1° and 4° as checks). Bootstrap CV as in §3h, cap 100.
+
+| step | result |
+|---|---|
+| (1) salinity equation, coastal grid | ΔS ∝ B^0.03, L ≈ 590 km (log fit; nls 325 km), R² 0.02. Median ΔS 0.31 PSU at 0–10 km vs 0.20 at 200–500 km — Bio-ORACLE salinity (~9 km climatology) does not resolve plumes |
+| (2) log K ~ S + T | R² 0.17; σk still tracks distance (r = −0.45; σk ~ log D + log Q R² 0.22) — not ocean-only |
+| (3) structural (S, σk) − current, 2-stage | −0.041 / −0.047 / −0.089 (sg / mg / kp) |
+| (3) adding exp(−D/L̂) back, 1-stage | +0.040 / +0.024 / +0.045, all intervals > 0 |
+| (4) doubling B, via S | < 0.03% change in suitability |
+| (5) plume index log10(1 + Q·exp(−D/L)) in place of D + Q | never better than current; L = 10 km closest (−0.018 / −0.009 / −0.028), longer L worse; S, K, log D alone ≈ current |
+
+**Decision.** The process model is sound but the data cannot carry it: global
+salinity does not resolve river plumes, so S cannot stand in for D or B, and
+σk keeps the land signal salinity misses. Distance stays in the SDM. If an
+exponential form is wanted for distance, its scale is short (~10 km), not the
+300–600 km that salinity implies. River size × decay adds nothing over
+distance alone, consistent with §3c/§3i. Catchment vegetation (RiverATLAS)
+not tested: figshare's bot check blocks a server-side download; the
+2.33 GB geodatabase (figshare file 20087321) has to be fetched in a browser.
 
 ---
 
