@@ -44,10 +44,11 @@ message(sprintf("04_structural: %s | bc %d | bg %d | grid %s", OUT_DIR, nrow(bc)
 # ═════════════════════════════════════════════════════════════════════════════
 # Reference salinity: the open-ocean value nearby
 # ═════════════════════════════════════════════════════════════════════════════
-# The 90th percentile of salinity in a W-degree block, interpolated back to
-# the native grid. High quantile rather than max, so one hypersaline lagoon
-# cell does not set the reference; a block wide enough to reach past the
-# plumes of all but the largest rivers. W = 2 is the main setting.
+# Two ways to get S_ref, the salinity the water would have without the river:
+#   idwM  (main, the co-author's suggestion): drop every ocean cell within M km
+#         of land, then fill the gap by inverse-distance weighting from the
+#         open ocean beyond (0.5° offshore means, radius 3°, power 2).
+#   blkW  the 90th percentile in a W-degree block — a cruder check.
 sal <- terra::rast(sdmpredictors::load_layers("BO_salinity", equalarea = FALSE))
 res_deg <- terra::res(sal)[1]
 s_ref_rast <- function(w_deg) {
@@ -61,9 +62,26 @@ add_sref <- function(d, r, nm) {
   d[[nm]] <- terra::extract(r, as.matrix(d[, c("lon", "lat")]))[, 1]
   d
 }
-sref <- list(`1` = s_ref_rast(1), `2` = s_ref_rast(2), `4` = s_ref_rast(4))
+dco <- NULL
+s_ref_idw <- function(mask_km) {
+  cache <- file.path(OUT_DIR, sprintf("S_ref_idw%d.tif", mask_km))
+  if (file.exists(cache)) return(terra::rast(cache))
+  if (is.null(dco)) dco <<- terra::distance(terra::ifel(is.na(sal), 1, NA))  # m to land
+  off  <- terra::mask(sal, dco < mask_km * 1000, maskvalues = TRUE)
+  off5 <- terra::aggregate(off, fact = round(0.5 / res_deg), fun = "mean", na.rm = TRUE)
+  pts  <- as.matrix(terra::as.data.frame(off5, xy = TRUE, na.rm = TRUE))
+  idw  <- terra::interpIDW(terra::rast(off5), pts, radius = 3, power = 2,
+                           minPoints = 3, near = FALSE)
+  ref  <- terra::resample(idw, sal, method = "bilinear")
+  terra::writeRaster(ref, cache, overwrite = TRUE)
+  ref
+}
+MAIN_REF <- Sys.getenv("BC_SREF", "idw50")
+sref <- list(idw25 = s_ref_idw(25), idw50 = s_ref_idw(50), idw100 = s_ref_idw(100),
+             blk1 = s_ref_rast(1), blk2 = s_ref_rast(2), blk4 = s_ref_rast(4))
+S_REF <- paste0("S_ref_", MAIN_REF)
 for (w in names(sref)) {
-  nm <- paste0("S_ref", w)
+  nm <- paste0("S_ref_", w)
   bc <- add_sref(bc, sref[[w]], nm); bg_df <- add_sref(bg_df, sref[[w]], nm)
   if (!is.null(wg)) wg <- add_sref(wg, sref[[w]], nm)
 }
@@ -77,8 +95,8 @@ message("\n--- (1) salinity: log(S_ref − S) = log c + β log B − D / L ---")
 # fitted on presences + background as a check. Cells with ΔS ≤ 0.05 PSU carry
 # no measurable freshwater signal and cannot be logged; their share is
 # reported, and a nonlinear fit on the raw scale keeps them in.
-fit_sal <- function(d, w = "2", size = "upstream_km2", label = "") {
-  d$dS   <- d[[paste0("S_ref", w)]] - d$Salinity
+fit_sal <- function(d, w = MAIN_REF, size = "upstream_km2", label = "") {
+  d$dS   <- d[[paste0("S_ref_", w)]] - d$Salinity
   d$logB <- log10(d[[size]])
   d <- d[is.finite(d$dS) & is.finite(d$logB) & is.finite(d$dist_km), ]
   pos <- d$dS > 0.05
@@ -92,7 +110,7 @@ fit_sal <- function(d, w = "2", size = "upstream_km2", label = "") {
   nlc <- if (inherits(nl, "try-error")) c(lc = NA, beta = NA, L = NA) else coef(nl)
   r2_nl <- if (inherits(nl, "try-error")) NA else
     1 - sum(residuals(nl)^2) / sum((d$dS - mean(d$dS))^2)
-  data.frame(fit = label, window_deg = as.numeric(w), size = size, n = nrow(d),
+  data.frame(fit = label, reference = w, size = size, n = nrow(d),
              share_dS_pos = mean(pos),
              beta_log = co[["logB"]], elasticity = co[["logB"]] / log(10),
              L_log_km = -1 / co[["dist_km"]],
@@ -106,9 +124,9 @@ sal_dat_pts  <- dplyr::bind_rows(bc, bg_df)
 sal_dat_pts  <- sal_dat_pts[sal_dat_pts$dist_km <= 500, ]
 sal_tab <- dplyr::bind_rows(
   if (!is.null(sal_dat_grid)) dplyr::bind_rows(lapply(names(sref), \(w) fit_sal(sal_dat_grid, w, "upstream_km2", "grid"))),
-  if (!is.null(sal_dat_grid)) fit_sal(sal_dat_grid, "2", "discharge_cms", "grid"),
-  fit_sal(sal_dat_pts, "2", "upstream_km2", "points"),
-  fit_sal(sal_dat_pts, "2", "discharge_cms", "points"))
+  if (!is.null(sal_dat_grid)) fit_sal(sal_dat_grid, MAIN_REF, "discharge_cms", "grid"),
+  fit_sal(sal_dat_pts, MAIN_REF, "upstream_km2", "points"),
+  fit_sal(sal_dat_pts, MAIN_REF, "discharge_cms", "points"))
 print(sal_tab |> dplyr::mutate(dplyr::across(where(is.numeric), \(x) signif(x, 3))))
 write.csv(sal_tab, file.path(OUT_DIR, "TabS_struct_salinity.csv"), row.names = FALSE)
 
@@ -117,12 +135,13 @@ write.csv(sal_tab, file.path(OUT_DIR, "TabS_struct_salinity.csv"), row.names = F
 # this resolution cannot carry the distance effect, whatever the model.
 if (!is.null(sal_dat_grid)) {
   gb <- sal_dat_grid |>
-    dplyr::mutate(dS = S_ref2 - Salinity,
+    dplyr::mutate(dS = .data[[S_REF]] - Salinity,
                   D_band = cut(dist_km, c(0, 10, 25, 50, 100, 200, 500), include.lowest = TRUE),
                   B_tercile = dplyr::ntile(upstream_km2, 3)) |>
     dplyr::filter(is.finite(dS))
   band_tab <- gb |> dplyr::group_by(D_band) |>
-    dplyr::summarise(n = dplyr::n(), dS_median = median(dS), dS_q75 = quantile(dS, .75),
+    dplyr::summarise(n = dplyr::n(), S_median = median(Salinity), S_q10 = quantile(Salinity, .1),
+                     dS_median = median(dS), dS_q75 = quantile(dS, .75),
                      dS_q90 = quantile(dS, .9), .groups = "drop")
   band_B <- gb |> dplyr::filter(dist_km <= 50) |> dplyr::group_by(B_tercile) |>
     dplyr::summarise(n = dplyr::n(), B_median_km2 = median(upstream_km2),
@@ -136,11 +155,14 @@ if (!is.null(sal_dat_grid)) {
 }
 
 main_sal <- sal_tab[sal_tab$fit == (if (!is.null(sal_dat_grid)) "grid" else "points") &
-                    sal_tab$window_deg == 2 & sal_tab$size == "upstream_km2", ][1, ]
+                    sal_tab$reference == MAIN_REF & sal_tab$size == "upstream_km2", ][1, ]
 BETA  <- main_sal$beta_log
 L_HAT <- main_sal$L_log_km
-message(sprintf("  main: ΔS ∝ B^%.3f | L = %.1f km", BETA / log(10), L_HAT))
-if (!is.finite(L_HAT) || L_HAT <= 0) stop("salinity does not decay with distance; L not estimable")
+message(sprintf("  main (%s): ΔS ∝ B^%.3f | L = %.1f km", MAIN_REF, BETA / log(10), L_HAT))
+if (!is.finite(L_HAT) || L_HAT <= 0) {
+  message("  ΔS does not decay with distance under this reference; exp(−D/L) uses L = 50 km")
+  L_HAT <- 50
+}
 
 # ═════════════════════════════════════════════════════════════════════════════
 # (2) Turbidity equation and σk
@@ -302,8 +324,8 @@ b_eff <- dplyr::bind_rows(lapply(ECO_LVLS, function(tp) {
   base <- as.numeric(predict(m, pres[, feats], type = "cloglog"))
   dplyr::bind_rows(lapply(c(0.5, 2, 10), function(k) {
     # only points fresher than the reference carry a freshwater deficit to scale
-    p2 <- pres; dS <- p2$S_ref2 - p2$Salinity; fr <- is.finite(dS) & dS > 0
-    p2$Salinity[fr] <- p2$S_ref2[fr] - dS[fr] * exp(BETA * log10(k))   # ΔS ∝ B^(β/ln10)
+    p2 <- pres; dS <- p2[[S_REF]] - p2$Salinity; fr <- is.finite(dS) & dS > 0
+    p2$Salinity[fr] <- p2[[S_REF]][fr] - dS[fr] * exp(BETA * log10(k))   # ΔS ∝ B^(β/ln10)
     new <- as.numeric(predict(m, p2[, feats], type = "cloglog"))
     data.frame(Type = tp, B_factor = k, dS_factor = exp(BETA * log10(k)),
                mean_dSal = mean(p2$Salinity - pres$Salinity, na.rm = TRUE),

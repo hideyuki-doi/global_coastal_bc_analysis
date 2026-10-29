@@ -344,6 +344,17 @@ salinity in a 2° block (1° and 4° as checks). Bootstrap CV as in §3h, cap 10
 | (4) doubling B, via S | < 0.03% change in suitability |
 | (5) plume index log10(1 + Q·exp(−D/L)) in place of D + Q | never better than current; L = 10 km closest (−0.018 / −0.009 / −0.028), longer L worse; S, K, log D alone ≈ current |
 
+**Update — b0 by IDW (co-author's suggestion).** Mask ocean cells within M km
+of land, fill by IDW from offshore 0.5° means (radius 3°, power 2); M = 50
+main, 25 and 100 as checks. With this reference the decay becomes visible:
+median ΔS 0.15 PSU at 0–10 km, 0.09 at 25–50, 0.02 at 50–100, ~0 beyond 100
+(90th pct 2.4 → 1.6 → 1.1 → 0.07). Nonlinear fit L = 58 km (M = 25: 36, M =
+100: 92 — L follows the mask width, partly by construction). But catchment
+area still does not explain ΔS (elasticity −0.005, p = 0.60), only 38% of
+coastal cells are fresher than the reference, R² ≈ 0.05, B-via-S effect zero,
+and every SDM contrast is unchanged (σk does not depend on b0). Written as
+S = b0 − b1·B^β·exp(−D/L), b1 > 0 and the log form is well defined.
+
 **Decision.** The process model is sound but the data cannot carry it: global
 salinity does not resolve river plumes, so S cannot stand in for D or B, and
 σk keeps the land signal salinity misses. Distance stays in the SDM. If an
