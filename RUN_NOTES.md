@@ -58,6 +58,7 @@ maxnet 0.1.4, xgboost 3.4.2.1, ranger 0.18.0; EOT20 tides present).
 | 2026-10-30 | `R/04_structural.R`, co-author's structural model, 50 replicates | done | §3k |
 | 2026-10-30 | main pipeline with `BC_FEAT=struct` (S, σk, log D), cap 100 | done | §3l; `output_struct/` |
 | 2026-10-30 | 10 background draws × {current, struct}, 20 runs | done | §3m; `output_bgseeds/` |
+| 2026-10-30 | struct made default; main run → `output/`; figures compared with v5 | done | report §図の比較 |
 
 Environment notes: conda-forge GDAL needs `libgdal-hdf5 libgdal-netcdf` or terra
 cannot open the EOT20 `.nc` files (run halts at the tidal step). Running three
@@ -478,8 +479,10 @@ move within noise.
 - [ ] **One environment for all manuscript numbers** (§3g — cause now known:
       terra version changes the background draw). Recommend terra 1.9.50 here;
       or rerun the revision under terra 1.8.86 to keep v5's draw. Not a mix.
-- [ ] **Stage-2 variable set**: current (S, Kd490, D, Q) or struct (S, σk, D) —
-      same AUC; regulation effects differ (§3l). Report the other as sensitivity.
+- [x] **Stage-2 variable set**: struct (S, σk, D) adopted 2026-10-30 and made
+      the default; current (S, Kd490, D, Q) kept as sensitivity (`BC_FEAT=current`).
+      Main outputs in `output/` (seed 42); the previous current-set run is in
+      `output_current_cap100/`. Figure comparison with v5 in the report.
 - [x] **Report headline numbers over several background draws** — done for
       ten draws (§3m); quote medians and ranges.
 - [ ] **Soften the one-stage claim** (§3h): "about twice", with both

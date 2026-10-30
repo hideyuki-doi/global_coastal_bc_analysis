@@ -946,13 +946,15 @@ FEAT_range <- c("SST","lat")
 # HydroRIVERS itself (DIS_AV_CMS). log_upstream stays in the data frames and is
 # compared against log_discharge in R/02_reviewer_analyses.R.
 #
-# BC_FEAT=struct switches to the variable set that came out of the co-author's
-# structural model (RUN_NOTES §3k): salinity, σk and distance. σk is the part
+# Stage 2 uses the variable set that came out of the co-author's structural
+# model (RUN_NOTES §3k-3m, adopted 2026-10-30): salinity, σk and distance.
+# BC_FEAT=current restores the earlier set (salinity, Kd490, distance,
+# discharge), kept as the sensitivity analysis. σk is the part
 # of log Kd490 that salinity and SST do not explain (fitted on presences and
 # background together below), so turbidity enters without the share that
 # merely restates salinity and temperature; river size is dropped, as it adds
 # nothing (§3c, §3i). Same CV AUC as the default set.
-FEAT_SET   <- Sys.getenv("BC_FEAT", "current")
+FEAT_SET   <- Sys.getenv("BC_FEAT", "struct")
 FEAT       <- switch(FEAT_SET,
   current = c("Salinity","Kd490", DIST_VAR, "log_discharge"),
   struct  = c("Salinity","sigk",  DIST_VAR),

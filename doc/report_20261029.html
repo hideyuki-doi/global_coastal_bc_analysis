@@ -139,19 +139,19 @@ footer { font-size: 0.82rem; color: var(--muted); display: grid; gap: 6px; borde
   <h1>ブルーカーボン改訂解析報告</h1>
   <p>沿岸ブルーカーボン生態系（海草・マングローブ・コンブ類）の2段階 MaxEnt モデルについて、査読対応の改訂版を実行した結果、見つかった問題への対応、頑健性の検証、コメントへの回答案をまとめます。</p>
   <div class="meta">
-    <span>2026-10-30（第4版）</span>
+    <span>2026-10-30（第5版）</span>
     <span>RTX サーバー（R 4.5.3, conda <code>gcbc</code>）</span>
     <span>ブランチ <code>server-run-20261029</code></span>
   </div>
   <nav class="toc" aria-label="目次">
-    <a href="#findings">主な発見</a><a href="#design">1段階か2段階か</a><a href="#cap">種あたり上限</a><a href="#supp">補足解析</a><a href="#v5">v5 との対照</a><a href="#struct">構造モデル案</a><a href="#varset">変数セットと背景点10回</a><a href="#reply">返信文の下書き</a><a href="#todo">残課題</a>
+    <a href="#findings">主な発見</a><a href="#design">1段階か2段階か</a><a href="#cap">種あたり上限</a><a href="#supp">補足解析</a><a href="#v5">v5 との対照</a><a href="#figs">図の比較</a><a href="#struct">構造モデル案</a><a href="#varset">変数セットと背景点10回</a><a href="#reply">返信文の下書き</a><a href="#todo">残課題</a>
   </nav>
 </header>
 
 <div class="summary">
   <div class="eyebrow">要点</div>
   <ul>
-    <li><b>「塩分・σk・河口距離」の3変数でも、現行の4変数と予測性能は同じでした。</b>背景点を10回引き直しても、同じ回どうしで比べた AUC の差は ±0.03 以内です。一方、70% 規制の影響は3変数のほうが一貫して大きく（海草 −15 vs −11%、マングローブ −14 vs −11%、コンブ −11 vs −7%）、30組中29組で3変数のほうが大きく出ました。どちらを本解析にしても、もう一方を感度分析として示す必要があります。</li>
+    <li><b>本解析を「塩分・σk・河口距離」の3変数に切り替え、論文と同じ図を作り直しました。</b>予測性能は従来の4変数と同じ（背景点10回、同じ回どうしの差 ±0.03 以内）で、変数の意味が説明しやすくなります。図で大きく変わるのは、変数の重要度（コンブの最重要が塩分から河口距離へ）、濁りの応答曲線（単調増加から山型へ）、流量規制の影響（v5 の約2〜4倍、3群がほぼ並ぶ）の3点で、分布図・占有率・距離分布はほぼ同じです。4変数版は感度分析として残します。</li>
     <li><b>共著者の構造モデル案（塩分経由で河口距離と集水域を説明する）は、考え方は正しいもののデータが支えきれませんでした。</b>外洋の塩分を IDW で取ると、河口から 50〜100 km で塩分が外洋の値に戻る減衰は見えました。しかし集水域が大きいほど塩分が下がる関係は出ず、河口距離を外した SDM は AUC が 0.04〜0.09 下がります。全球の塩分データ（約 9 km の平均値）では河口ごとのプルームが均されてしまうためです。SDM には河口距離を残し、このモデルは考察の枠組みとして使うのが妥当です。</li>
     <li><b>2段階設計で距離の寄与が大きく測れることは確認できましたが、原稿の書き方は強すぎました。</b>ブートストラップ50回の検証では、テスト側で距離をシャッフルしたときの AUC 低下が、2段階で 1段階より 0.06〜0.08 大きくなりました（海草・マングローブは95%区間が0を含まず、上限の設定を変えても同じ）。一方、距離を外して推定し直す方法では、同じ向きでも区間は0を含み、1段階でも距離の寄与はゼロではありません。「1段階では埋もれる」ではなく「2段階でおよそ2倍に測れる」が妥当です。</li>
     <li><b>コメントの「濁度から温度影響を除けば1段階で済む」案は、効果がありませんでした。</b>Kd490 の残差を使っても、1段階モデルでの距離の寄与は増えません（差はほぼ0、4通りの上限すべてで同じ）。</li>
@@ -347,6 +347,66 @@ footer { font-size: 0.82rem; color: var(--muted); display: grid; gap: 6px; borde
   </ul>
 </section>
 
+<section id="figs">
+  <h2>図の比較（原稿 v5 → 改訂版）</h2>
+  <p>論文の図を、改訂版（塩分・σk・河口距離、種あたり上限 100）で作り直しました。左が原稿 v5（v5 のコードを terra 1.8.86 で再現したもの）、右が改訂版です。改訂版の図は背景点1回分（シード 42）なので、本文に載せる数値は背景点10回の中央値を使います。</p>
+  <h3>全球の生息適合度（本図）</h3>
+  <div class="figpair">
+    <figure><img src="report_assets/figs/v5_FigMain_GlobalSuitability.png" alt="全球の生息適合度（本図）（原稿 v5）" loading="lazy"><figcaption>原稿 v5</figcaption></figure>
+    <figure><img src="report_assets/figs/rev_FigMain_GlobalSuitability.png" alt="全球の生息適合度（本図）（改訂版）" loading="lazy"><figcaption>改訂版</figcaption></figure>
+  </div>
+  <p>分布のパターンはほぼ同じです。違いはコンブで、東アジア（日本・韓国・中国沿岸）の適合度が上がりました。カジメを加えた効果です。海草とマングローブに目立つ違いはありません。</p>
+  <h3>Stage 1：気候による分布範囲</h3>
+  <div class="figpair">
+    <figure><img src="report_assets/figs/v5_FigSEM_Stage1_RangeModel.png" alt="Stage 1：気候による分布範囲（原稿 v5）" loading="lazy"><figcaption>原稿 v5</figcaption></figure>
+    <figure><img src="report_assets/figs/rev_FigSEM_Stage1_RangeModel.png" alt="Stage 1：気候による分布範囲（改訂版）" loading="lazy"><figcaption>改訂版</figcaption></figure>
+  </div>
+  <p>空間パターンはほぼ同じで、コンブは日本周辺の範囲がやや広がりました。AUC は 0.834 / 0.880 / 0.914 から 0.793 / 0.816 / 0.891 に下がっています。主因は背景点の違い（terra の版）で、背景点10回の中央値は 0.789 / 0.823 / 0.894 です。「気候が分布範囲を決める」という主張は保たれます。</p>
+  <h3>河口からの距離と占有率</h3>
+  <div class="figpair">
+    <figure><img src="report_assets/figs/v5_FigD4_EmpiricalOccupancy.png" alt="河口からの距離と占有率（原稿 v5）" loading="lazy"><figcaption>原稿 v5</figcaption></figure>
+    <figure><img src="report_assets/figs/rev_FigD4_EmpiricalOccupancy.png" alt="河口からの距離と占有率（改訂版）" loading="lazy"><figcaption>改訂版</figcaption></figure>
+  </div>
+  <p>形はほぼ同じです。マングローブは河口でほぼ 1、海草は約 0.8 のまま。コンブは河口付近が 0.52 から 0.56 にわずかに上がりました。河口に近いほど占有率が高いという中心の結果は変わりません。</p>
+  <h3>河口からの距離の分布</h3>
+  <div class="figpair">
+    <figure><img src="report_assets/figs/v5_FigD1_Violin.png" alt="河口からの距離の分布（原稿 v5）" loading="lazy"><figcaption>原稿 v5</figcaption></figure>
+    <figure><img src="report_assets/figs/rev_FigD1_Violin.png" alt="河口からの距離の分布（改訂版）" loading="lazy"><figcaption>改訂版</figcaption></figure>
+  </div>
+  <p>ほぼ同じです。カジメは1種あたり100件の上限で抑えているため、コンブの分布の形もほとんど変わりません。</p>
+  <h3>変数の重要度（生態系モデル）</h3>
+  <div class="figpair">
+    <figure><img src="report_assets/figs/v5_FigS2_VarImp.png" alt="変数の重要度（生態系モデル）（原稿 v5）" loading="lazy"><figcaption>原稿 v5</figcaption></figure>
+    <figure><img src="report_assets/figs/rev_FigS2_VarImp.png" alt="変数の重要度（生態系モデル）（改訂版）" loading="lazy"><figcaption>改訂版</figcaption></figure>
+  </div>
+  <p>大きく変わる図です。コンブの最重要変数が塩分（約50%）から河口距離（約74%）に入れ替わりました。マングローブは河口距離が 72% から 53% に下がり、σk が 46%（v5 の濁度は 25%）に上がっています。海草は河口距離が 85% から 70%、塩分が 10% から 20%。流域面積の行はなくなりました。</p>
+  <h3>応答曲線（種ごとモデルの平均 ± SD）</h3>
+  <div class="figpair">
+    <figure><img src="report_assets/figs/v5_FigS3_ResponseCurves_CI.png" alt="応答曲線（種ごとモデルの平均 ± SD）（原稿 v5）" loading="lazy"><figcaption>原稿 v5</figcaption></figure>
+    <figure><img src="report_assets/figs/rev_FigS3_ResponseCurves_CI.png" alt="応答曲線（種ごとモデルの平均 ± SD）（改訂版）" loading="lazy"><figcaption>改訂版</figcaption></figure>
+  </div>
+  <p>濁りへの応答の形が変わります。v5 の濁度は単調増加（濁るほど適合度が高い）でしたが、σk では3群とも山型で、塩分と水温から予想されるよりやや濁った場所（σk ≈ +0.2〜+0.5）で最大になります。塩分と河口距離の応答はほぼ同じです。流域面積のパネル（ほぼ平ら）はなくなり、3パネルになりました。</p>
+  <h3>種ごとの変数重要度</h3>
+  <div class="figpair">
+    <figure><img src="report_assets/figs/v5_FigSp1_SpeciesImportance.png" alt="種ごとの変数重要度（原稿 v5）" loading="lazy"><figcaption>原稿 v5</figcaption></figure>
+    <figure><img src="report_assets/figs/rev_FigSp1_SpeciesImportance.png" alt="種ごとの変数重要度（改訂版）" loading="lazy"><figcaption>改訂版</figcaption></figure>
+  </div>
+  <p>コンブの塩分は v5 では 70% 前後に集中していましたが、改訂版は 50% 前後で幅が広がりました。カジメ以外の種構成の影響が見えるようになったためです。マングローブの河口距離は中央値 45% から 60% に上がりました。</p>
+  <h3>交差検証の ROC</h3>
+  <div class="figpair">
+    <figure><img src="report_assets/figs/v5_FigROC_CrossValidation.png" alt="交差検証の ROC（原稿 v5）" loading="lazy"><figcaption>原稿 v5</figcaption></figure>
+    <figure><img src="report_assets/figs/rev_FigROC_CrossValidation.png" alt="交差検証の ROC（改訂版）" loading="lazy"><figcaption>改訂版</figcaption></figure>
+  </div>
+  <p>AUC は 0.612 / 0.681 / 0.742 から 0.670 / 0.699 / 0.699 になりました（この図は背景点1回分。10回の中央値は 0.657 / 0.732 / 0.731）。コンブはブロック間のばらつきが大きくなっています（±0.017 から ±0.077）。</p>
+  <h3>流量規制の強さと適合度の変化</h3>
+  <div class="figpair">
+    <figure><img src="report_assets/figs/v5_FigSc2b_Gradient_SpeciesCI.png" alt="流量規制の強さと適合度の変化（原稿 v5）" loading="lazy"><figcaption>原稿 v5</figcaption></figure>
+    <figure><img src="report_assets/figs/rev_FigSc2b_Gradient_SpeciesCI.png" alt="流量規制の強さと適合度の変化（改訂版）" loading="lazy"><figcaption>改訂版</figcaption></figure>
+  </div>
+  <p>最も大きく変わる図です。70% 規制で −8.3 / −6.0 / −3.8% だったのが −15.1 / −14.4 / −12.6% になり、v5 の「海草 > マングローブ > コンブ」の順も、3群がほぼ並ぶ形に変わりました。マングローブとコンブの区間も 0 から離れています。原因は、距離経路の不具合の修正と、σk の山型の応答（河口付近の水が澄むと適合度が下がる）の2つです。</p>
+  <p class="caption">改訂で新たに加えた補足図（濁度の分解 FigR1、1段階 vs 2段階 FigR2）は v5 に対応する図がないため、ここでは比べていません。ファイル名はパイプラインの出力名（<code>output/</code>）です。</p>
+</section>
+
 <section id="struct">
   <h2>共著者の構造モデル案（10/30 のコメント）</h2>
   <div class="callout">
@@ -533,7 +593,7 @@ footer { font-size: 0.82rem; color: var(--muted); display: grid; gap: 6px; borde
   <h2>残っている判断と作業</h2>
   <ol class="todo">
     <li><b>原稿の数値をどの環境でそろえるか。</b>terra 1.9.50（このサーバー）でそろえるのが推奨。v5 の値を残したいなら terra 1.8.86 で改訂版を走らせ直すこともできます。どちらにしても混ぜないこと。</li>
-    <li><b>2段階目の変数セットを決める。</b>現行（塩分・濁度・距離・流量）か新（塩分・σk・距離）か。予測性能は同じで、規制の影響は新のほうが一貫して大きい。採らなかったほうを感度分析に。</li>
+    <li><b>変数セット：</b>3変数（塩分・σk・河口距離）を本解析に決定（10/30）。4変数版を感度分析として補足に載せる。方法に σk の作り方を1段落。</li>
     <li><b>本文の数値は背景点 10 回の中央値と範囲で示す。</b>10 回分の結果はそろっています（<code>output_bgseeds/</code>）。</li>
     <li><b>1段階 vs 2段階の書き方の修正。</b>「埋もれる」→「およそ2倍に測れる」。シャッフルと除去・再推定の両方を区間つきで。</li>
     <li><b>構造モデル案の扱い。</b>考察で陸からの流入経路の枠組みとして紹介し、塩分の距離減衰（IDW の b0）を補足図にするか。返信 2 を共著者に送る。</li>
