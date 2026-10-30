@@ -309,6 +309,7 @@ if (file.exists(ECK_CSV)) {
     bc$abs_lat <- abs(bc$lat)
     bc$log_Kd  <- log(bc$Kd490)
     message(sprintf("  bc after Ecklonia merge: %s records", format(nrow(bc), big.mark = ",")))
+    saveRDS(bc, file.path(OUT_DIR, "bc_merged.rds"))   # for Supplementary Table S1
     print(table(bc$Type))
   }
 } else {
@@ -519,6 +520,7 @@ bc$depth     <- pmax(0, replace(abs(depth_raw), !is.finite(depth_raw), 0))
 MAX_DEPTH_M <- 100
 n_bc_before <- nrow(bc)
 bc <- bc |> dplyr::filter(depth <= MAX_DEPTH_M)
+saveRDS(bc, file.path(OUT_DIR, "bc_depthfiltered.rds"))   # before the per-species cap; Table S1
 bc$log_depth <- log10(bc$depth + 1)
 # River-mouth distance, upstream catchment area and city distance for occurrences.
 # dist_km is recomputed here (overriding whatever bc_analysis.rds supplied) so
@@ -980,8 +982,11 @@ VAR_LABELS <- c(
   tidal_m      = "Tidal range (m)"
 )
 
-# Background: random ocean sample from env raster
-set.seed(42)
+# Background: random ocean sample from env raster. The draw changes with the
+# seed AND with the terra version (RUN_NOTES §3g), and one redraw moves AUC by
+# 0.03-0.06, so headline numbers are reported over several seeds (BC_BG_SEED).
+BG_SEED <- as.integer(Sys.getenv("BC_BG_SEED", "42"))
+set.seed(BG_SEED)
 bg_pts  <- terra::spatSample(env_rast[[1]], size = 20000,
                               method = "random", na.rm = TRUE, xy = TRUE)
 bg_vect <- terra::vect(bg_pts[, c("x","y")], crs = "EPSG:4326")
@@ -2658,7 +2663,9 @@ message("  FigSc3: dist_km pathway only (Kd490 excluded — artifact direction i
 # predictor comparison and the one-stage / two-stage contrast. Kept in their own
 # file so this one stays readable; it runs in this environment and uses bc,
 # bg_df, world_grid, FEAT and FEAT_range as they stand at this point.
-if (file.exists("R/02_reviewer_analyses.R")) {
+if (nzchar(Sys.getenv("BC_SKIP_PART8"))) {
+  message("PART 8 skipped (BC_SKIP_PART8 set)")
+} else if (file.exists("R/02_reviewer_analyses.R")) {
   source("R/02_reviewer_analyses.R", echo = FALSE)
 } else {
   message("R/02_reviewer_analyses.R not found — supplementary analyses skipped")

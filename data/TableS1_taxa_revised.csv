@@ -1,0 +1,33 @@
+"Ecosystem","Genus","Species (n)","Records (n)","Genus-only records (n)","After depth filter (n)","Used in models (n)"
+"Seagrass","Zostera",13,339,25,319,246
+"","Halophila",11,153,8,107,107
+"","Posidonia",7,103,2,89,89
+"","Cymodocea",2,42,2,33,33
+"","Halodule",4,42,3,35,35
+"","Thalassia",2,40,1,33,33
+"","Syringodium",2,24,1,22,22
+"","Enhalus",1,22,2,19,19
+"","Phyllospadix",3,12,5,9,9
+"","Subtotal (9 genera)",45,777,49,666,593
+"","",,,,,
+"Mangrove","Avicennia",6,205,22,185,185
+"","Rhizophora",7,192,12,171,171
+"","Bruguiera",6,111,4,88,88
+"","Lumnitzera",2,82,4,72,72
+"","Laguncularia",1,78,3,68,68
+"","Sonneratia",4,65,8,55,55
+"","Ceriops",4,62,4,56,56
+"","Nypa",1,7,0,5,5
+"","Kandelia",2,6,2,6,6
+"","Subtotal (9 genera)",33,808,59,706,706
+"","",,,,,
+"Kelp","Ecklonia",2,1439,13,1319,146
+"","Laminaria",8,183,44,159,159
+"","Saccharina",1,108,38,101,101
+"","Macrocystis",1,46,10,35,35
+"","Undaria",1,36,1,35,35
+"","Durvillaea",2,27,22,25,25
+"","Lessonia",1,4,3,3,3
+"","Subtotal (7 genera)",16,1843,131,1677,504
+"","",,,,,
+"Total","25 genera",94,3428,239,3049,1803

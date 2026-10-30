@@ -57,6 +57,7 @@ maxnet 0.1.4, xgboost 3.4.2.1, ranger 0.18.0; EOT20 tides present).
 | 2026-10-29 | v5 code + terra 1.8.86 (side library) | done | reproduces the v5 manuscript (§3g); worktree `../gcbc_v5_terra18` |
 | 2026-10-30 | `R/04_structural.R`, co-author's structural model, 50 replicates | done | §3k |
 | 2026-10-30 | main pipeline with `BC_FEAT=struct` (S, σk, log D), cap 100 | done | §3l; `output_struct/` |
+| 2026-10-30 | 10 background draws × {current, struct}, 20 runs | done | §3m; `output_bgseeds/` |
 
 Environment notes: conda-forge GDAL needs `libgdal-hdf5 libgdal-netcdf` or terra
 cannot open the EOT20 `.nc` files (run halts at the tidal step). Running three
@@ -404,6 +405,40 @@ Also fixed in passing: the PART 5 partial-dependence curve for distance varied
 
 ---
 
+### 3m. Ten background draws × two variable sets (new, 2026-10-30)
+
+`BC_BG_SEED` (default 42) sets the background draw; seeds 42 and 101–109,
+cap 100, PART 8 skipped (`BC_SKIP_PART8=1`), each for `current` and `struct`.
+`output_bgseeds/`, summarised by `R/06_bgseed_summary.R`. Background points
+after the depth filter: 1,151–1,266.
+
+Median [min, max] over the ten draws:
+
+| | current | struct |
+|---|---|---|
+| CV AUC sg | 0.651 [0.621, 0.678] | 0.657 [0.628, 0.675] |
+| CV AUC mg | 0.725 [0.689, 0.749] | 0.732 [0.699, 0.758] |
+| CV AUC kp | 0.737 [0.685, 0.765] | 0.731 [0.691, 0.765] |
+| Stage 1 AUC sg / mg / kp | 0.789 / 0.823 / 0.894 (ranges 0.78–0.81, 0.82–0.84, 0.88–0.90) | same |
+| distance importance (ecosystem MaxEnt) sg / mg / kp | 65 / 52 / 70% | 75 / 57 / 69% |
+| 70% regulation sg | −10.6 [−12.1, −9.1]% | −15.1 [−17.7, −10.1]% |
+| 70% regulation mg | −11.2 [−13.1, −9.1]% | −13.5 [−16.7, −11.6]% |
+| 70% regulation kp | −7.2 [−9.7, −5.1]% | −11.3 [−12.6, −9.0]% |
+
+Paired by draw (struct − current): CV AUC −0.001 / +0.009 / +0.004 (all
+within ±0.03); 70% regulation −5.1 / −2.3 / −3.4 points, more negative in
+9/10, 10/10, 10/10 draws.
+
+**Decision input.** The two sets predict equally well in every draw. The
+regulation effect is larger under struct consistently, not by chance of one
+draw. Seed 42 sat at the low end for kelp (CV AUC 0.697 vs median 0.737):
+single-draw numbers should not be quoted. Revised Table S1:
+`data/TableS1_taxa_revised.csv` (`R/05_tableS1.R`) — 25 genera, 94 species,
+3,428 records, 3,049 after the depth filter, 1,803 used (cap 100); Ecklonia
+2 species, 1,439 records.
+
+---
+
 ## 4. Departures from v5
 
 | quantity | v5 (manuscript) | v5 code, this server | revision (cap 100) |
@@ -445,14 +480,14 @@ move within noise.
       or rerun the revision under terra 1.8.86 to keep v5's draw. Not a mix.
 - [ ] **Stage-2 variable set**: current (S, Kd490, D, Q) or struct (S, σk, D) —
       same AUC; regulation effects differ (§3l). Report the other as sensitivity.
-- [ ] **Report headline numbers over several background draws** (§3g): one
-      redraw moves AUC by 0.03–0.06.
+- [x] **Report headline numbers over several background draws** — done for
+      ten draws (§3m); quote medians and ranges.
 - [ ] **Soften the one-stage claim** (§3h): "about twice", with both
       permutation and drop-variable intervals.
 - [ ] Response letter: disclose the scenario bug and the corrected regulation
       effects (§3e)
-- [ ] Taxonomy table (Supplementary Table S1) — regenerate with the merged
-      *E. cava*; kelp genus counts and the species total both change
+- [x] Taxonomy table (Supplementary Table S1) — regenerated,
+      `data/TableS1_taxa_revised.csv` (§3m)
 - [ ] **RiverATLAS not implemented.** Unchanged judgement: discharge covers
       the substance. The one hint that composition might matter is the mangrove
       `both` row (§3c); revisit only if a reviewer presses it.
