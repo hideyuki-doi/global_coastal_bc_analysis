@@ -139,18 +139,19 @@ footer { font-size: 0.82rem; color: var(--muted); display: grid; gap: 6px; borde
   <h1>ブルーカーボン改訂解析報告</h1>
   <p>沿岸ブルーカーボン生態系（海草・マングローブ・コンブ類）の2段階 MaxEnt モデルについて、査読対応の改訂版を実行した結果、見つかった問題への対応、頑健性の検証、コメントへの回答案をまとめます。</p>
   <div class="meta">
-    <span>2026-10-30（第3版）</span>
+    <span>2026-10-30（第4版）</span>
     <span>RTX サーバー（R 4.5.3, conda <code>gcbc</code>）</span>
     <span>ブランチ <code>server-run-20261029</code></span>
   </div>
   <nav class="toc" aria-label="目次">
-    <a href="#findings">主な発見</a><a href="#design">1段階か2段階か</a><a href="#cap">種あたり上限</a><a href="#supp">補足解析</a><a href="#v5">v5 との対照</a><a href="#struct">構造モデル案</a><a href="#reply">返信文の下書き</a><a href="#todo">残課題</a>
+    <a href="#findings">主な発見</a><a href="#design">1段階か2段階か</a><a href="#cap">種あたり上限</a><a href="#supp">補足解析</a><a href="#v5">v5 との対照</a><a href="#struct">構造モデル案</a><a href="#varset">変数セットと背景点10回</a><a href="#reply">返信文の下書き</a><a href="#todo">残課題</a>
   </nav>
 </header>
 
 <div class="summary">
   <div class="eyebrow">要点</div>
   <ul>
+    <li><b>「塩分・σk・河口距離」の3変数でも、現行の4変数と予測性能は同じでした。</b>背景点を10回引き直しても、同じ回どうしで比べた AUC の差は ±0.03 以内です。一方、70% 規制の影響は3変数のほうが一貫して大きく（海草 −15 vs −11%、マングローブ −14 vs −11%、コンブ −11 vs −7%）、30組中29組で3変数のほうが大きく出ました。どちらを本解析にしても、もう一方を感度分析として示す必要があります。</li>
     <li><b>共著者の構造モデル案（塩分経由で河口距離と集水域を説明する）は、考え方は正しいもののデータが支えきれませんでした。</b>外洋の塩分を IDW で取ると、河口から 50〜100 km で塩分が外洋の値に戻る減衰は見えました。しかし集水域が大きいほど塩分が下がる関係は出ず、河口距離を外した SDM は AUC が 0.04〜0.09 下がります。全球の塩分データ（約 9 km の平均値）では河口ごとのプルームが均されてしまうためです。SDM には河口距離を残し、このモデルは考察の枠組みとして使うのが妥当です。</li>
     <li><b>2段階設計で距離の寄与が大きく測れることは確認できましたが、原稿の書き方は強すぎました。</b>ブートストラップ50回の検証では、テスト側で距離をシャッフルしたときの AUC 低下が、2段階で 1段階より 0.06〜0.08 大きくなりました（海草・マングローブは95%区間が0を含まず、上限の設定を変えても同じ）。一方、距離を外して推定し直す方法では、同じ向きでも区間は0を含み、1段階でも距離の寄与はゼロではありません。「1段階では埋もれる」ではなく「2段階でおよそ2倍に測れる」が妥当です。</li>
     <li><b>コメントの「濁度から温度影響を除けば1段階で済む」案は、効果がありませんでした。</b>Kd490 の残差を使っても、1段階モデルでの距離の寄与は増えません（差はほぼ0、4通りの上限すべてで同じ）。</li>
@@ -396,6 +397,52 @@ footer { font-size: 0.82rem; color: var(--muted); display: grid; gap: 6px; borde
   <p><b>まとめ。</b>考え方は正しいのですが、全球データの解像度が足りず、塩分は河口距離の代わりになりませんでした。今のデータで陸の影響の強さを最もよく表しているのは河口距離です。原稿では、このモデルを陸からの流入の経路を説明する枠組みとして考察で紹介し、塩分の距離減衰を補足に示し、SDM には河口距離を残すのが良いと考えます。集水域の植生割合（RiverATLAS）は今回は見送りました。</p>
 </section>
 
+<section id="varset">
+  <h2>変数セットの比較と背景点の引き直し</h2>
+  <p>構造モデル案の検討から、2段階目の説明変数を「塩分・σk・河口距離」の3つにする案が出ました。σk は log(濁度) を塩分と水温で回帰した残差で、「塩分と水温から予想されるより濁っているか」を表します。現行の「塩分・濁度・河口距離・流量」と、本解析の全工程で比べました。背景点の引き直し1回で AUC が 0.03〜0.06 動くため、背景点を 10 回引き直し（乱数シード 42, 101〜109）、それぞれ両方の変数セットで回しています（計 20 回、種あたり上限 100）。</p>
+
+  <div class="well"><table>
+    <thead><tr><th>10 回の中央値 [最小, 最大]</th><th class="num">現行（4変数）</th><th class="num">新（塩分・σk・距離）</th></tr></thead>
+    <tbody>
+      <tr><td>CV AUC <span class="eco sg">海草</span></td><td class="num">0.651 [0.621, 0.678]</td><td class="num">0.657 [0.628, 0.675]</td></tr>
+      <tr><td>CV AUC <span class="eco mg">マングローブ</span></td><td class="num">0.725 [0.689, 0.749]</td><td class="num">0.732 [0.699, 0.758]</td></tr>
+      <tr><td>CV AUC <span class="eco kp">コンブ</span></td><td class="num">0.737 [0.685, 0.765]</td><td class="num">0.731 [0.691, 0.765]</td></tr>
+      <tr><td>Stage 1 AUC 海草 / マングローブ / コンブ</td><td class="num" colspan="2" style="text-align:center">0.789 / 0.823 / 0.894（両セット共通、範囲 0.78–0.81 / 0.82–0.84 / 0.88–0.90）</td></tr>
+      <tr><td>河口距離の重要度（生態系モデル）</td><td class="num">65 / 52 / 70%</td><td class="num">75 / 57 / 69%</td></tr>
+      <tr class="hl"><td>70% 規制 <span class="eco sg">海草</span></td><td class="num">−10.6 [−12.1, −9.1]%</td><td class="num">−15.1 [−17.7, −10.1]%</td></tr>
+      <tr class="hl"><td>70% 規制 <span class="eco mg">マングローブ</span></td><td class="num">−11.2 [−13.1, −9.1]%</td><td class="num">−13.5 [−16.7, −11.6]%</td></tr>
+      <tr class="hl"><td>70% 規制 <span class="eco kp">コンブ</span></td><td class="num">−7.2 [−9.7, −5.1]%</td><td class="num">−11.3 [−12.6, −9.0]%</td></tr>
+    </tbody>
+  </table></div>
+  <p class="caption">水深フィルタ後の背景点は 1,151〜1,266 点。70% 規制は種ごとの平均適合度の変化率の平均。</p>
+
+  <div class="well"><table>
+    <thead><tr><th>同じ回どうしの差（新 − 現行）</th><th class="num"><span class="eco sg">海草</span></th><th class="num"><span class="eco mg">マングローブ</span></th><th class="num"><span class="eco kp">コンブ</span></th></tr></thead>
+    <tbody>
+      <tr><td>CV AUC</td><td class="num">−0.001 [−0.013, +0.016]</td><td class="num">+0.009 [−0.004, +0.023]</td><td class="num">+0.004 [−0.026, +0.015]</td></tr>
+      <tr><td>70% 規制（ポイント）</td><td class="num">−5.1 [−7.9, +0.8]</td><td class="num">−2.3 [−3.5, −2.0]</td><td class="num">−3.4 [−6.9, −2.2]</td></tr>
+      <tr><td>新のほうが規制の影響が大きい回</td><td class="num">9 / 10</td><td class="num">10 / 10</td><td class="num">10 / 10</td></tr>
+    </tbody>
+  </table></div>
+
+  <p><b>読み方。</b>予測性能はどの回でも同じで、差は背景点の引き直しによるばらつき（コンブで 0.69〜0.77）よりずっと小さい値です。規制の影響が新セットで大きく出るのは偶然ではなく、ほぼすべての回で一貫しています。σk への応答は3群とも山型で、塩分と水温から予想されるよりやや濁った場所（σk ≈ +0.2〜+0.5）で適合度が最も高くなります。ダムで河口付近の水が澄むと σk が下がって山の左側に移るため、規制の影響が大きく出ます。</p>
+  <p>シード 42（これまでの本解析）は、コンブの CV AUC が 0.697 と10回の中で下のほうでした。原稿では1回きりの値ではなく、10回の中央値と範囲を示すべきです。</p>
+  <p><b>判断の材料。</b>新セットは変数が1つ少なく、各変数の意味を説明しやすく、共著者のコメントにも直接応えられます。代わりに σk を作る回帰を方法で説明する必要があります。どちらを採っても、規制の影響は濁りの入れ方で 1.2〜2 倍変わるので、もう一方を感度分析として示します。</p>
+
+  <h3>補足表 S1（作り直し）</h3>
+  <div class="well"><table>
+    <thead><tr><th></th><th class="num">属</th><th class="num">種</th><th class="num">記録</th><th class="num">水深フィルタ後</th><th class="num">モデルに使用（上限 100）</th></tr></thead>
+    <tbody>
+      <tr><td><span class="eco sg">海草</span></td><td class="num">9</td><td class="num">45</td><td class="num">777</td><td class="num">666</td><td class="num">593</td></tr>
+      <tr><td><span class="eco mg">マングローブ</span></td><td class="num">9</td><td class="num">33</td><td class="num">808</td><td class="num">706</td><td class="num">706</td></tr>
+      <tr><td><span class="eco kp">コンブ</span></td><td class="num">7</td><td class="num">16</td><td class="num">1,843</td><td class="num">1,677</td><td class="num">504</td></tr>
+      <tr><td>　うち <em class="sp">Ecklonia</em></td><td class="num">—</td><td class="num">2</td><td class="num">1,439</td><td class="num">1,319</td><td class="num">146</td></tr>
+      <tr class="hl"><td>合計</td><td class="num">25</td><td class="num">94</td><td class="num">3,428</td><td class="num">3,049</td><td class="num">1,803</td></tr>
+    </tbody>
+  </table></div>
+  <p class="caption">全行は <code>data/TableS1_taxa_revised.csv</code>。v5 の表に「水深フィルタ後」「モデルに使用」の2列を加えました。</p>
+</section>
+
 <section id="reply">
   <h2>共著者への返信文（下書き）</h2>
 
@@ -467,11 +514,11 @@ footer { font-size: 0.82rem; color: var(--muted); display: grid; gap: 6px; borde
   <h2>残っている判断と作業</h2>
   <ol class="todo">
     <li><b>原稿の数値をどの環境でそろえるか。</b>terra 1.9.50（このサーバー）でそろえるのが推奨。v5 の値を残したいなら terra 1.8.86 で改訂版を走らせ直すこともできます。どちらにしても混ぜないこと。</li>
-    <li><b>背景点の抽出を複数回繰り返した結果で示すか。</b>引き直し1回で AUC が 0.03〜0.06 動くため、本文の主要な数値は 10 回程度の繰り返しの中央値と区間で示すのが安全です。</li>
+    <li><b>2段階目の変数セットを決める。</b>現行（塩分・濁度・距離・流量）か新（塩分・σk・距離）か。予測性能は同じで、規制の影響は新のほうが一貫して大きい。採らなかったほうを感度分析に。</li>
+    <li><b>本文の数値は背景点 10 回の中央値と範囲で示す。</b>10 回分の結果はそろっています（<code>output_bgseeds/</code>）。</li>
     <li><b>1段階 vs 2段階の書き方の修正。</b>「埋もれる」→「およそ2倍に測れる」。シャッフルと除去・再推定の両方を区間つきで。</li>
     <li><b>構造モデル案の扱い。</b>考察で陸からの流入経路の枠組みとして紹介し、塩分の距離減衰（IDW の b0）を補足図にするか。返信 2 を共著者に送る。</li>
     <li><b>回答書での不具合の開示。</b>v5 の規制シナリオは濁度経路のみで、影響を過小評価していた。</li>
-    <li><b>補足表 S1 の作り直し。</b>カジメの統合で、コンブの属・種の数が変わる。</li>
     <li><b>ブランチの取り込み。</b><code>server-run-20261029</code> を main にマージするか（Mac 側のセッションと調整）。</li>
     <li>任意：<em class="sp">Sargassum muticum</em> の追加、RiverATLAS による流域の土地利用の検討。</li>
   </ol>
