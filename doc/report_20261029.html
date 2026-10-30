@@ -438,6 +438,21 @@ footer { font-size: 0.82rem; color: var(--muted); display: grid; gap: 6px; borde
     </tbody>
   </table></div>
   <p class="caption">同じ回どうしの差（ST との比較）：STx は AUC ±0.01、規制 +0.6〜+1.4 ポイント。T は海草の AUC −0.021、ほかは ±0.01、規制 +1.0〜+4.0 ポイント。</p>
+  <h3>図で見る違い（背景点 1 回分、シード 42）</h3>
+  <p>応答曲線（左から塩分・σk・河口距離）</p>
+  <div class="figpair">
+    <figure><img src="report_assets/figs/rev_FigS3_ResponseCurves_CI.png" alt="応答曲線（ST）" loading="lazy"><figcaption>ST：塩分＋水温（本解析）</figcaption></figure>
+    <figure><img src="report_assets/figs/sigkSTx_FigS3_ResponseCurves_CI.png" alt="応答曲線（STx）" loading="lazy"><figcaption>STx：交互作用つき</figcaption></figure>
+    <figure><img src="report_assets/figs/sigkT_FigS3_ResponseCurves_CI.png" alt="応答曲線（T）" loading="lazy"><figcaption>T：水温だけ</figcaption></figure>
+  </div>
+  <p>ST と STx はほぼ同じ形です。水温だけ（T）では、コンブの σk への応答が平らになって山の位置が左（σk ≈ 0）にずれ、海草は σk が高い側でも下がりにくくなります。塩分と河口距離の応答はどの定義でも変わりません。</p>
+  <p>流量規制の強さと適合度の変化</p>
+  <div class="figpair">
+    <figure><img src="report_assets/figs/rev_FigSc2b_Gradient_SpeciesCI.png" alt="規制勾配（ST）" loading="lazy"><figcaption>ST：70% で −15.1 / −14.4 / −12.6%</figcaption></figure>
+    <figure><img src="report_assets/figs/sigkSTx_FigSc2b_Gradient_SpeciesCI.png" alt="規制勾配（STx）" loading="lazy"><figcaption>STx：−13.7 / −13.7 / −10.8%</figcaption></figure>
+    <figure><img src="report_assets/figs/sigkT_FigSc2b_Gradient_SpeciesCI.png" alt="規制勾配（T）" loading="lazy"><figcaption>T：−10.6 / −13.5 / −8.3%</figcaption></figure>
+  </div>
+  <p>どの定義でも3群とも適合度が下がり、v5（−8.3 / −6.0 / −3.8%）より大きくなります。ST と STx は「海草 ≈ マングローブ ＞ コンブ」の順ですが、水温だけ（T）では海草とコンブの低下が小さくなり、マングローブが最も大きくなります。値は海草 / マングローブ / コンブの順で、この1回分の値です（10 回の中央値は上の表）。</p>
   <p><b>読み方。</b>予測性能はどの定義でもほぼ同じで（水温だけの定義で海草がやや下がる）、河口距離が最重要、σk への応答が山型、という結果も共通です。変わるのは規制の影響の大きさで、ST が最も大きく、T が最も小さくなります。</p>
   <p><b>決定（10/30）。</b>本解析は ST（塩分＋水温）のままにし、STx と T を感度分析として補足に示します。交互作用は統計的には効いていますが、結果をほとんど変えず、向きも分解の考え方を支持しません。水温だけの定義は σk が塩分と重なり、海草の予測性能も下がります。規制の影響は、定義の幅として「70% 規制で海草 −11〜−15%、マングローブ −12〜−14%、コンブ −8〜−11%」と示します。どの定義でも v5（−8 / −6 / −3%）より大きくなります。</p>
 </section>
