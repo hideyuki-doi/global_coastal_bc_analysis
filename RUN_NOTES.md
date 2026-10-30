@@ -59,6 +59,7 @@ maxnet 0.1.4, xgboost 3.4.2.1, ranger 0.18.0; EOT20 tides present).
 | 2026-10-30 | main pipeline with `BC_FEAT=struct` (S, σk, log D), cap 100 | done | §3l; `output_struct/` |
 | 2026-10-30 | 10 background draws × {current, struct}, 20 runs | done | §3m; `output_bgseeds/` |
 | 2026-10-30 | struct made default; main run → `output/`; figures compared with v5 | done | report §図の比較 |
+| 2026-10-30 | σk definitions STx and T, ten draws each | done | §3n |
 
 Environment notes: conda-forge GDAL needs `libgdal-hdf5 libgdal-netcdf` or terra
 cannot open the EOT20 `.nc` files (run halts at the tidal step). Running three
@@ -437,6 +438,39 @@ single-draw numbers should not be quoted. Revised Table S1:
 `data/TableS1_taxa_revised.csv` (`R/05_tableS1.R`) — 25 genera, 94 species,
 3,428 records, 3,049 after the depth filter, 1,803 used (cap 100); Ecklonia
 2 species, 1,439 records.
+
+---
+
+### 3n. σk definition: interaction or temperature only (new, 2026-10-30)
+
+Co-author: land-derived material also decays on the way out at a
+temperature-dependent rate, so try log K = a0 + a1·S + a2·T + a3·S·T + σk, or
+σk from log K ~ T alone. `BC_SIGK` = ST (default) / STx / T; ten draws each
+(`output_bgseeds/structSTx_s*`, `structT_s*`), compared by `R/07_sigk_compare.R`.
+
+Turbidity model: ST R² 0.166; STx R² 0.191, S·T term t = −9.6; T R² 0.058.
+σk still tracks distance under all three (r = −0.45 / −0.43 / −0.47); under T
+it also overlaps salinity (r = −0.32). The interaction runs the other way from
+the decay idea: per PSU fresher, Kd rises ~5% at 10 °C and ~10% at 28 °C, i.e.
+the land–turbidity link is stronger in warm water (sediment- and CDOM-rich
+tropical rivers outweigh faster decay).
+
+| ten draws, median | ST | STx | T |
+|---|---|---|---|
+| CV AUC sg / mg / kp | 0.657 / 0.732 / 0.731 | 0.661 / 0.725 / 0.732 | 0.634 / 0.733 / 0.744 |
+| σk importance sg / mg / kp | 9 / 40 / 4% | 11 / 36 / 1% | 2 / 41 / 6% |
+| distance importance sg / mg / kp | 75 / 57 / 69% | 75 / 59 / 70% | 80 / 58 / 72% |
+| 70% regulation sg / mg / kp | −15.1 / −13.5 / −11.3% | −14.0 / −12.9 / −9.7% | −11.4 / −12.4 / −7.5% |
+| σk at peak suitability sg / mg / kp | 0.53 / 0.43 / 0.19 | 0.52 / 0.39 / 0.11 | 0.52 / 0.47 / −0.02 |
+
+Paired with ST in the same draw: STx AUC ±0.01, regulation +0.6 to +1.4
+points; T AUC −0.021 for seagrass (others ±0.01), regulation +1.0 to +4.0.
+
+**Decision (proposed).** Keep ST as the main definition; report STx and T as
+sensitivity. The interaction is real but changes nothing material, and its
+sign does not support the decay rationale; T-only σk overlaps salinity and
+loses seagrass skill. Quote the regulation effect as a range across
+definitions (70%: sg −11 to −15, mg −12 to −14, kp −8 to −11%).
 
 ---
 

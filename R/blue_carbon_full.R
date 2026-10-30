@@ -1045,14 +1045,24 @@ message(sprintf("  bg_df after depth filter (<=%.0f m): %d points", MAX_DEPTH_M,
 # σk: turbidity not explained by salinity and SST. One linear fit over
 # presences and background together; sigk_of() reapplies it wherever Kd490,
 # salinity or SST change (global grid, scenarios).
-m_sigk <- lm(log(Kd490) ~ Salinity + SST,
+# BC_SIGK picks the turbidity model (co-author's comment of 2026-10-30, that
+# land-derived material also decays on its way out at a temperature-dependent
+# rate): ST = salinity + SST (default), STx = with their interaction, T = SST
+# only. RUN_NOTES §3n.
+SIGK_FORM <- Sys.getenv("BC_SIGK", "ST")
+sigk_formula <- switch(SIGK_FORM,
+  ST  = log(Kd490) ~ Salinity + SST,
+  STx = log(Kd490) ~ Salinity * SST,
+  T   = log(Kd490) ~ SST,
+  stop("BC_SIGK must be ST, STx or T"))
+m_sigk <- lm(sigk_formula,
              data = dplyr::bind_rows(bc[, c("Kd490","Salinity","SST")],
                                      bg_df[, c("Kd490","Salinity","SST")]) |>
                     dplyr::filter(Kd490 > 0, is.finite(Salinity), is.finite(SST)))
 sigk_of <- function(d) log(pmax(d$Kd490, 1e-6)) - as.numeric(predict(m_sigk, newdata = d))
 bc$sigk    <- sigk_of(bc)
 bg_df$sigk <- sigk_of(bg_df)
-message(sprintf("  σk model: log Kd490 ~ Salinity + SST, R² = %.3f", summary(m_sigk)$r.squared))
+message(sprintf("  σk model (%s): %s, R² = %.3f", SIGK_FORM, deparse(sigk_formula), summary(m_sigk)$r.squared))
 
 lon_cuts   <- seq(-180, 180, length.out = 5)
 assign_blk <- function(lon) as.integer(cut(lon, breaks = lon_cuts, include.lowest = TRUE))
