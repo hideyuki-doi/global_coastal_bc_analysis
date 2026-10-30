@@ -306,26 +306,45 @@ footer { font-size: 0.82rem; color: var(--muted); display: grid; gap: 6px; borde
 </section>
 
 <section id="v5">
-  <h2>v5 との対照</h2>
+  <h2>原稿 v5 との対照</h2>
+  <p>改訂版の値は、背景点を 10 回引き直したときの中央値 [最小, 最大] です（種あたり上限 100）。数値が動いた原因は、実行環境（terra による背景点の違い）、カジメの追加と種あたり上限、規制シナリオの不具合の修正、流域面積から流量への置き換え、背景点 10 回の中央値で示すこと、変数セットの6つに分けられます。</p>
   <div class="well"><table>
-    <thead><tr><th>項目</th><th class="num">原稿 v5</th><th class="num">v5 コード + terra 1.9.50</th><th class="num">改訂版（上限 100）</th></tr></thead>
+    <thead><tr><th>項目</th><th class="num">原稿 v5</th><th class="num">改訂・現行4変数</th><th class="num">改訂・新3変数</th><th>主な原因</th></tr></thead>
     <tbody>
-      <tr><td>水深フィルタ後の記録数 海草 / マングローブ / コンブ</td><td class="num">666 / 706 / 404</td><td class="num">666 / 706 / 404</td><td class="num">593 / 706 / 504</td></tr>
-      <tr><td>CV AUC 海草</td><td class="num">0.611 ± 0.104</td><td class="num">0.655 ± 0.099</td><td class="num">0.675 ± 0.082</td></tr>
-      <tr><td>CV AUC マングローブ</td><td class="num">0.687 ± 0.045</td><td class="num">0.700 ± 0.036</td><td class="num">0.689 ± 0.050</td></tr>
-      <tr><td>CV AUC コンブ</td><td class="num">0.749 ± 0.014</td><td class="num">0.719 ± 0.068</td><td class="num">0.697 ± 0.079</td></tr>
-      <tr><td>Stage 1 AUC 海草 / マングローブ / コンブ</td><td class="num">0.834 / 0.880 / 0.914</td><td class="num">0.804 / 0.816 / 0.907</td><td class="num">0.793 / 0.816 / 0.891</td></tr>
-      <tr><td>マングローブ 距離の重要度*</td><td class="num">47.4%</td><td class="num">52.3%</td><td class="num">56.4%</td></tr>
-      <tr><td>コンブ 塩分 / 距離*</td><td class="num">68.8 / 24.6%</td><td class="num">61.9 / 16.9%</td><td class="num">52.0 / 37.3%</td></tr>
-      <tr><td>海草 塩分 / 距離 / 濁度*</td><td class="num">15.4 / 14.7 / 13.4%</td><td class="num">11.1 / 13.6 / 7.2%</td><td class="num">13.8 / 14.2 / 7.7%</td></tr>
-      <tr><td>河川の大きさ*</td><td class="num">面積 0.3–3.3%</td><td class="num">面積 1.5–3.5%</td><td class="num">流量 1.6–2.5%</td></tr>
-      <tr><td>河口距離の中央値 マングローブ / コンブ / 海草</td><td class="num">31.8 / 33.0 / 43.7 km</td><td class="num">28.5 / 32.0 / 38.6 km</td><td class="num">28.5 / 33.2 / 39.7 km</td></tr>
-      <tr><td>河口での占有率 マングローブ / 海草 / コンブ</td><td class="num">0.98 / 0.81 / 0.48</td><td class="num">—</td><td class="num">≈ 0.99 / 0.80 / 0.56</td></tr>
-      <tr><td>占有率 0.50 の距離 マングローブ / 海草</td><td class="num">21 / 17 km</td><td class="num">—</td><td class="num">≈ 25 / 16 km</td></tr>
-      <tr><td>70% 規制 海草 / マングローブ / コンブ</td><td class="num">−8.3 / −6.0 / −3.1%</td><td class="num">−6.5 / −7.7 / −3.0%</td><td class="num">−10.1 / −12.1 / −5.7%</td></tr>
+      <tr><td>記録数 / 種 / 属</td><td class="num">2,040 / 93 / 25</td><td class="num" colspan="2" style="text-align:center">3,428 / 94 / 25（モデルに使用 1,803）</td><td>カジメ追加・上限</td></tr>
+      <tr><td>コンブの気候</td><td class="num">11.9 ± 4.2 °C、|緯度| 49.7°</td><td class="num" colspan="2" style="text-align:center">13.3 ± 4.6 °C、44.9°</td><td>カジメ追加</td></tr>
+      <tr><td>CV AUC 海草</td><td class="num">0.611 ± 0.104</td><td class="num">0.651 [0.621, 0.678]</td><td class="num">0.657 [0.628, 0.675]</td><td>環境・背景点</td></tr>
+      <tr><td>CV AUC マングローブ</td><td class="num">0.687 ± 0.045</td><td class="num">0.725 [0.689, 0.749]</td><td class="num">0.732 [0.699, 0.758]</td><td>環境・背景点</td></tr>
+      <tr><td>CV AUC コンブ</td><td class="num">0.749 ± 0.014</td><td class="num">0.737 [0.685, 0.765]</td><td class="num">0.731 [0.691, 0.765]</td><td>カジメ・背景点</td></tr>
+      <tr><td>Stage 1 AUC 海草 / マングローブ / コンブ</td><td class="num">0.834 / 0.880 / 0.914</td><td class="num" colspan="2" style="text-align:center">0.789 / 0.823 / 0.894</td><td>環境（terra）</td></tr>
+      <tr><td>マングローブ 河口距離の重要度*</td><td class="num">47.4%</td><td class="num">50.1% [27, 63]</td><td class="num">60.3% [34, 66]</td><td>背景点・変数セット</td></tr>
+      <tr><td>コンブ 塩分 / 距離*</td><td class="num">68.8 / 24.6%</td><td class="num">51.2 / 35.3%</td><td class="num">47.5 / 29.8%</td><td>カジメ追加</td></tr>
+      <tr><td>海草 塩分 / 距離 / 濁り*</td><td class="num">15.4 / 14.7 / 13.4%</td><td class="num">13.9 / 18.8 / 13.2%</td><td class="num">12.7 / 25.2 / 10.3%</td><td>背景点・変数セット</td></tr>
+      <tr><td>河川の大きさ*</td><td class="num">流域面積 0.3–3.3%</td><td class="num">流量 0.9–2.0%</td><td class="num">（変数に入れない）</td><td>面積→流量</td></tr>
+      <tr><td>河口距離の中央値 マングローブ / コンブ / 海草</td><td class="num">31.8 / 33.0 / 43.7 km</td><td class="num" colspan="2" style="text-align:center">28.5 / 33.2 / 39.7 km</td><td>カジメ・上限</td></tr>
+      <tr><td>河口での占有率 マングローブ / 海草 / コンブ</td><td class="num">0.98 / 0.81 / 0.48</td><td class="num" colspan="2" style="text-align:center">≈ 0.99 / 0.80 / 0.56</td><td>カジメ・上限</td></tr>
+      <tr><td>占有率 0.50 の距離 マングローブ / 海草</td><td class="num">21 / 17 km</td><td class="num" colspan="2" style="text-align:center">≈ 25 / 16 km</td><td>カジメ・上限</td></tr>
+      <tr class="hl"><td>70% 規制 海草</td><td class="num">−8.3%</td><td class="num">−10.6% [−12.1, −9.1]</td><td class="num">−15.1% [−17.7, −10.1]</td><td>不具合修正・変数セット</td></tr>
+      <tr class="hl"><td>70% 規制 マングローブ</td><td class="num">−6.0%</td><td class="num">−11.2% [−13.1, −9.1]</td><td class="num">−13.5% [−16.7, −11.6]</td><td>同上</td></tr>
+      <tr class="hl"><td>70% 規制 コンブ</td><td class="num">−3.1%</td><td class="num">−7.2% [−9.7, −5.1]</td><td class="num">−11.3% [−12.6, −9.0]</td><td>同上</td></tr>
     </tbody>
   </table></div>
-  <p class="caption">* 1° 間引き後の種ごとモデルの中央値（FigSp1）。占有率は FigD4 からの読み取り。CV AUC は4ブロックの平均 ± SD。改訂そのものの効果は、同じ環境で走らせた中央列と右列の差で読みます。コンブ（カジメ追加と上限）、規制の影響（不具合修正）、河川の大きさ（面積→流量）以外は、ほぼ背景点の引き直しと同程度のずれです。</p>
+  <p class="caption">* 1° 間引き後の種ごとモデルの中央値（FigSp1）を、さらに背景点 10 回で中央値をとったもの。占有率と 0.50 の距離は背景点 1 回分の FigD4 からの読み取りで目安。v5 の CV AUC は 4 ブロックの平均 ± SD。</p>
+
+  <h3>原稿の主張で変わるところ</h3>
+  <ul style="margin:0;padding-left:1.2em;display:grid;gap:6px">
+    <li><b>1段階 vs 2段階：</b>「1段階では河川のシグナルが埋もれる」は言いすぎで、「2段階にすると河口距離の寄与がおよそ2倍に測れる」に改める。</li>
+    <li><b>流量規制の影響：</b>v5 の約 1.5〜2 倍（変数セットによっては約 2〜3.5 倍）。v5 では距離の経路がシナリオに反映されていなかったため、回答書で開示する。</li>
+    <li><b>コンブの特徴づけ：</b>「cool-temperate to subpolar」→「temperate to subpolar」。塩分は今も最重要だが、割合は約7割から約5割に下がり、河口距離の比重が上がった。</li>
+    <li><b>濁度：</b>「解釈しにくい」というぼかしをやめ、分解した結果（気候だけで 19%、河川だけで 23%）で書く。</li>
+    <li><b>AUC の示し方：</b>1回の値ではなく背景点 10 回の中央値と範囲で示す。Stage 1 は 0.02〜0.06 下がったが 0.79〜0.89 と高く、「気候が分布範囲を決める」は保たれる。</li>
+  </ul>
+  <h3>変わらないところ</h3>
+  <ul style="margin:0;padding-left:1.2em;display:grid;gap:6px">
+    <li>河口に近いほど占有率が高いという中心の結果。マングローブでは河口距離が最重要で、河口での占有率もほぼ 1 のまま。</li>
+    <li>「河川の大きさは効かない」は、より良い指標の流量で確認でき、かえって強くなった。</li>
+    <li>距離の関数形（log / 1/D / exp）は結果に影響しない。</li>
+  </ul>
 </section>
 
 <section id="struct">
