@@ -355,6 +355,15 @@ coastal cells are fresher than the reference, R² ≈ 0.05, B-via-S effect zero,
 and every SDM contrast is unchanged (σk does not depend on b0). Written as
 S = b0 − b1·B^β·exp(−D/L), b1 > 0 and the log form is well defined.
 
+**Update — literal form and 1/D (2026-10-30).** Fitting the comment's form
+literally, log(b0 − S) = log(b1)·log(B) − b2·D with no intercept, gives
+log(b1) = −0.16 (it absorbs the mean level, since ΔS is mostly < 1 PSU),
+b2 = 0.0042 km⁻¹ and R² = 0.046 — the same poor fit. Distance as 1/(D+1)
+added to (S, σk) recovers the same AUC as log or exp (2-stage +0.045 / +0.040 /
++0.053; 1-stage +0.044 / +0.025 / +0.038, all 1-stage intervals > 0): the form
+of D does not matter. (S, σk, D) matches the current model (0.664 / 0.741 /
+0.698 vs 0.670 / 0.734 / 0.698) — an interpretable variable set at no cost.
+
 **Decision.** The process model is sound but the data cannot carry it: global
 salinity does not resolve river plumes, so S cannot stand in for D or B, and
 σk keeps the land signal salinity misses. Distance stays in the SDM. If an

@@ -102,6 +102,11 @@ fit_sal <- function(d, w = MAIN_REF, size = "upstream_km2", label = "") {
   pos <- d$dS > 0.05
   m <- lm(log(dS) ~ logB + dist_km, data = d[pos, ])
   co <- coef(m)
+  # the comment's form taken literally: log(b0 − S) = log(b1)·log(B) − b2·D,
+  # no intercept, so log(b1) is the slope on log B
+  m0 <- lm(log(dS) ~ 0 + logB + dist_km, data = d[pos, ])
+  y0 <- log(d$dS[pos])
+  r2_0 <- 1 - sum(residuals(m0)^2) / sum((y0 - mean(y0))^2)
   # nonlinear fit on the salinity scale, all cells
   nl <- try(nls(dS ~ exp(lc + beta * logB - dist_km / L), data = d,
                 start = list(lc = co[[1]], beta = co[["logB"]] / log(10) * log(10),
@@ -117,6 +122,8 @@ fit_sal <- function(d, w = MAIN_REF, size = "upstream_km2", label = "") {
              p_beta = summary(m)$coefficients["logB", 4],
              p_D = summary(m)$coefficients["dist_km", 4],
              R2_log = summary(m)$r.squared,
+             logb1_literal = coef(m0)[["logB"]], b2_literal = -coef(m0)[["dist_km"]],
+             R2_literal = r2_0,
              beta_nls = nlc[["beta"]], L_nls_km = nlc[["L"]], R2_nls_dS = r2_nl)
 }
 sal_dat_grid <- if (!is.null(wg)) wg[wg$depth <= 100 & wg$dist_km <= 500, ] else NULL
@@ -218,10 +225,12 @@ MODELS <- list(
   "2s structural (S, σk)"      = list(c("Salinity", "sigk"), TRUE),
   "2s structural + exp(-D/L)"  = list(c("Salinity", "sigk", "expD_hat"), TRUE),
   "2s structural + logD"       = list(c("Salinity", "sigk", "log_dist"), TRUE),
+  "2s structural + 1/D"        = list(c("Salinity", "sigk", "inv_dist"), TRUE),
   # one stage, as the comment writes it: T, S, σk against the whole coast
   "1s current (T, lat, S, K, logD, Q)" = list(c("SST", "lat", "Salinity", "Kd490", "log_dist", "log_discharge"), FALSE),
   "1s structural (T, S, σk)"           = list(c("SST", "Salinity", "sigk"), FALSE),
-  "1s structural + exp(-D/L)"          = list(c("SST", "Salinity", "sigk", "expD_hat"), FALSE)
+  "1s structural + exp(-D/L)"          = list(c("SST", "Salinity", "sigk", "expD_hat"), FALSE),
+  "1s structural + 1/D"                = list(c("SST", "Salinity", "sigk", "inv_dist"), FALSE)
 )
 MODELS5 <- c(
   list("2s current (S, K, logD, Q)" = c("Salinity", "Kd490", "log_dist", "log_discharge"),
@@ -288,6 +297,8 @@ CONTRASTS <- list(
   c("2s structural (S, σk)",      "2s current (S, K, logD, Q)", "structural − current (2-stage)"),
   c("2s structural + exp(-D/L)",  "2s structural (S, σk)",      "D beyond S (2-stage, exp)"),
   c("2s structural + logD",       "2s structural (S, σk)",      "D beyond S (2-stage, log)"),
+  c("2s structural + 1/D",        "2s structural (S, σk)",      "D beyond S (2-stage, 1/D)"),
+  c("1s structural + 1/D",        "1s structural (T, S, σk)",   "D beyond S (1-stage, 1/D)"),
   c("1s structural (T, S, σk)",   "1s current (T, lat, S, K, logD, Q)", "structural − current (1-stage)"),
   c("1s structural + exp(-D/L)",  "1s structural (T, S, σk)",   "D beyond S (1-stage, exp)"))
 con <- dplyr::bind_rows(lapply(CONTRASTS, function(cn) dplyr::bind_rows(lapply(ECO_LVLS, function(tp) {
