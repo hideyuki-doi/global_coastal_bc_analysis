@@ -466,11 +466,13 @@ tropical rivers outweigh faster decay).
 Paired with ST in the same draw: STx AUC ±0.01, regulation +0.6 to +1.4
 points; T AUC −0.021 for seagrass (others ±0.01), regulation +1.0 to +4.0.
 
-**Decision (agreed 2026-10-30).** Keep ST as the main definition; report STx and T as
-sensitivity. The interaction is real but changes nothing material, and its
-sign does not support the decay rationale; T-only σk overlaps salinity and
-loses seagrass skill. Quote the regulation effect as a range across
-definitions (70%: sg −11 to −15, mg −12 to −14, kp −8 to −11%).
+**Decision (revised 2026-10-30).** Keep ST as the main definition. Drop STx: its
+sign is opposite to the decay rationale, because S·T picks up the regional
+contrast (warm seas = sediment- and CDOM-rich tropical rivers), not decay —
+temperature and river type move together, so decay cannot be isolated with
+these data. One sentence in the supplement; the limitation goes in the
+Discussion. Keep T as the sensitivity analysis. Regulation range from ST and T
+(STx lies between them): sg −11 to −15, mg −12 to −14, kp −8 to −11%.
 
 ---
 
@@ -513,8 +515,8 @@ move within noise.
 - [ ] **One environment for all manuscript numbers** (§3g — cause now known:
       terra version changes the background draw). Recommend terra 1.9.50 here;
       or rerun the revision under terra 1.8.86 to keep v5's draw. Not a mix.
-- [x] **σk definition**: ST (log Kd490 ~ S + SST) main; STx and T as
-      sensitivity, regulation quoted as the range across the three (§3n).
+- [x] **σk definition**: ST (log Kd490 ~ S + SST) main; T as sensitivity;
+      STx dropped (cannot represent decay; §3n). Regulation as the ST–T range.
 - [x] **Stage-2 variable set**: struct (S, σk, D) adopted 2026-10-30 and made
       the default; current (S, Kd490, D, Q) kept as sensitivity (`BC_FEAT=current`).
       Main outputs in `output/` (seed 42); the previous current-set run is in
