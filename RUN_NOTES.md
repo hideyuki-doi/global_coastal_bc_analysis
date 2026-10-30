@@ -56,6 +56,7 @@ maxnet 0.1.4, xgboost 3.4.2.1, ranger 0.18.0; EOT20 tides present).
 | 2026-10-29 | `R/03_robustness.R`, 50 bootstrap replicates, caps 50/100/200/none | done | §3h–3i; `TabS_robust_*.csv` |
 | 2026-10-29 | v5 code + terra 1.8.86 (side library) | done | reproduces the v5 manuscript (§3g); worktree `../gcbc_v5_terra18` |
 | 2026-10-30 | `R/04_structural.R`, co-author's structural model, 50 replicates | done | §3k |
+| 2026-10-30 | main pipeline with `BC_FEAT=struct` (S, σk, log D), cap 100 | done | §3l; `output_struct/` |
 
 Environment notes: conda-forge GDAL needs `libgdal-hdf5 libgdal-netcdf` or terra
 cannot open the EOT20 `.nc` files (run halts at the tidal step). Running three
@@ -375,6 +376,34 @@ not tested: figshare's bot check blocks a server-side download; the
 
 ---
 
+### 3l. Main pipeline with salinity, σk, distance (new, 2026-10-30)
+
+`BC_FEAT=struct` sets stage 2 to Salinity, σk, log_dist; σk = residual of
+log Kd490 ~ Salinity + SST (R² 0.166), refitted on presences + background and
+reapplied to the grid and inside every scenario (`sigk_of()`), so the Kd490
+pathway reaches it. Default stays `current`. Cap 100, `output_struct/`.
+
+| | current (S, Kd490, log D, log Q) | struct (S, σk, log D) |
+|---|---|---|
+| CV AUC sg / mg / kp | 0.675 ± 0.082 / 0.689 ± 0.050 / 0.697 ± 0.079 | 0.670 ± 0.091 / 0.699 ± 0.048 / 0.699 ± 0.077 |
+| Stage 1 AUC | 0.793 / 0.816 / 0.891 | same |
+| ecosystem MaxEnt, distance | 56 / 42 / 72% | 70 / 53 / 74% |
+| ecosystem MaxEnt, turbidity term | Kd 9 / 56 / 6% | σk 10 / 46 / 5% |
+| thinned species median, sal / dist / turb | sg 14 / 14 / 8; mg 6 / 56 / 26; kp 52 / 37 / 4 | sg 12 / 20 / 6; mg 8 / 61 / 31; kp 51 / 27 / 11 |
+| 70% regulation, species mean | −10.1 / −12.1 / −5.7% | −15.1 / −14.4 / −12.6% |
+
+Response to σk is unimodal in all three groups, peaking at σk ≈ +0.2 to +0.5
+(somewhat more turbid than salinity and SST predict); clearing the water near
+mouths pushes cells down the left limb, which is why the regulation effects
+grow, most for kelp. Same predictive skill, one variable fewer, cleaner
+reading — but the regulation magnitudes depend on how turbidity enters, so
+whichever set is adopted, report the other as sensitivity.
+
+Also fixed in passing: the PART 5 partial-dependence curve for distance varied
+`dist_km`, which is not a predictor, so it was flat; it now varies DIST_VAR.
+
+---
+
 ## 4. Departures from v5
 
 | quantity | v5 (manuscript) | v5 code, this server | revision (cap 100) |
@@ -414,6 +443,8 @@ move within noise.
 - [ ] **One environment for all manuscript numbers** (§3g — cause now known:
       terra version changes the background draw). Recommend terra 1.9.50 here;
       or rerun the revision under terra 1.8.86 to keep v5's draw. Not a mix.
+- [ ] **Stage-2 variable set**: current (S, Kd490, D, Q) or struct (S, σk, D) —
+      same AUC; regulation effects differ (§3l). Report the other as sensitivity.
 - [ ] **Report headline numbers over several background draws** (§3g): one
       redraw moves AUC by 0.03–0.06.
 - [ ] **Soften the one-stage claim** (§3h): "about twice", with both

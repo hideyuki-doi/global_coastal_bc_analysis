@@ -943,14 +943,27 @@ FEAT_range <- c("SST","lat")
 # delivered. Discharge integrates area with runoff and is carried by
 # HydroRIVERS itself (DIS_AV_CMS). log_upstream stays in the data frames and is
 # compared against log_discharge in R/02_reviewer_analyses.R.
-FEAT       <- c("Salinity","Kd490", DIST_VAR, "log_discharge")
+#
+# BC_FEAT=struct switches to the variable set that came out of the co-author's
+# structural model (RUN_NOTES §3k): salinity, σk and distance. σk is the part
+# of log Kd490 that salinity and SST do not explain (fitted on presences and
+# background together below), so turbidity enters without the share that
+# merely restates salinity and temperature; river size is dropped, as it adds
+# nothing (§3c, §3i). Same CV AUC as the default set.
+FEAT_SET   <- Sys.getenv("BC_FEAT", "current")
+FEAT       <- switch(FEAT_SET,
+  current = c("Salinity","Kd490", DIST_VAR, "log_discharge"),
+  struct  = c("Salinity","sigk",  DIST_VAR),
+  stop("BC_FEAT must be 'current' or 'struct'"))
 FEAT_SP    <- FEAT  # same for species level
+message("Feature set (stage 2): ", FEAT_SET, " — ", paste(FEAT, collapse = ", "))
 
 VAR_LABELS <- c(
   SST          = "SST (°C)",
   lat          = "Latitude (°)",
   Salinity     = "Salinity (PSU)",
   Kd490        = "Turbidity / Kd490 (m⁻¹)",
+  sigk         = "Turbidity residual σk (log Kd490 | salinity, SST)",
   log_dist     = "log₁₀(Dist. from river mouth + 1) (km)",
   dist_km      = "Dist. from river mouth (km)",
   log_depth    = "log₁₀(Water depth + 1) (m)",
@@ -1022,6 +1035,18 @@ bg_df$log_city     <- log10(bg_df$dist_city_km + 1)
 bg_df$log_tidal    <- log10(bg_df$tidal_m      + 1)
 message(sprintf("  bg_df after depth filter (<=%.0f m): %d points", MAX_DEPTH_M, nrow(bg_df)))
 
+# σk: turbidity not explained by salinity and SST. One linear fit over
+# presences and background together; sigk_of() reapplies it wherever Kd490,
+# salinity or SST change (global grid, scenarios).
+m_sigk <- lm(log(Kd490) ~ Salinity + SST,
+             data = dplyr::bind_rows(bc[, c("Kd490","Salinity","SST")],
+                                     bg_df[, c("Kd490","Salinity","SST")]) |>
+                    dplyr::filter(Kd490 > 0, is.finite(Salinity), is.finite(SST)))
+sigk_of <- function(d) log(pmax(d$Kd490, 1e-6)) - as.numeric(predict(m_sigk, newdata = d))
+bc$sigk    <- sigk_of(bc)
+bg_df$sigk <- sigk_of(bg_df)
+message(sprintf("  σk model: log Kd490 ~ Salinity + SST, R² = %.3f", summary(m_sigk)$r.squared))
+
 lon_cuts   <- seq(-180, 180, length.out = 5)
 assign_blk <- function(lon) as.integer(cut(lon, breaks = lon_cuts, include.lowest = TRUE))
 
@@ -1031,7 +1056,7 @@ all_vimp <- list(); all_pdp <- list()
 for (tp in ECO_LVLS) {
   message(sprintf("\n--- %s ---", tp))
 
-  sel_cols <- unique(c("lon","lat","abs_lat","SST", FEAT))
+  sel_cols <- unique(c("lon","lat","abs_lat","SST","Kd490", FEAT))
   pres <- bc |> dplyr::filter(Type == tp) |>
     dplyr::select(all_of(sel_cols)) |>
     dplyr::mutate(presence = 1L)
@@ -1154,8 +1179,12 @@ for (tp in ECO_LVLS) {
   all_vimp[[tp]] <- tibble::tibble(Type = tp, Variable = FEAT,
     MaxEnt  = mx_vimp,
     XGBoost = xgb_raw / sum(xgb_raw, na.rm = TRUE))
-  all_pdp[[tp]]  <- dplyr::bind_rows(make_pd("Kd490", kd_seq),
-                                      make_pd("dist_km", dist_seq))
+  # distance curve on the model's own variable (it used to vary dist_km, which
+  # is not a predictor, so the curve came out flat)
+  all_pdp[[tp]]  <- dplyr::bind_rows(
+    if ("Kd490" %in% FEAT) make_pd("Kd490", kd_seq) else
+      make_pd("sigk", seq(quantile(bc$sigk, .02, na.rm = TRUE), quantile(bc$sigk, .98, na.rm = TRUE), length.out = 80)),
+    make_pd(DIST_VAR, km_to_dist(seq(0, quantile(bc$dist_km, 0.90), length.out = 80))))
 }
 
 # FigS3 moved to after PART 5c — now uses species-level models for CI (±SD across species)
@@ -1195,7 +1224,7 @@ range_auc <- list()  # training AUC for Stage 1 range models
 
 for (tp in ECO_LVLS) {
   message(sprintf("  %s ...", tp))
-  sel_cols2 <- unique(c("lon","lat","abs_lat","SST", FEAT))
+  sel_cols2 <- unique(c("lon","lat","abs_lat","SST","Kd490", FEAT))
   pres   <- bc |> dplyr::filter(Type == tp) |>
     dplyr::select(all_of(sel_cols2)) |>
     dplyr::mutate(presence = 1L)
@@ -1418,6 +1447,7 @@ message("Checkpoint 1 saved → ", RDS_DIR)
 # =============================================================================
 CORR_LABELS <- c(Salinity      = "Salinity",
                  Kd490         = "Kd490",
+                 sigk          = "σk",
                  log_dist      = "log₁₀(Dist+1)",
                  inv_dist      = "1/(Dist+1)",
                  exp_dist      = "exp(−Dist/50)",
@@ -1847,6 +1877,8 @@ if (length(sp_col) == 0) {
       var_grids <- list(
         Salinity     = seq(quantile(bc$Salinity, 0.02, na.rm = TRUE),
                            quantile(bc$Salinity, 0.98, na.rm = TRUE), length.out = 50),
+        sigk         = seq(quantile(bc$sigk, 0.02, na.rm = TRUE),
+                           quantile(bc$sigk, 0.98, na.rm = TRUE), length.out = 50),
         Kd490        = exp(seq(log(max(1e-4, quantile(bc$Kd490[bc$Kd490 > 0],
                                                        0.02, na.rm = TRUE))),
                                log(quantile(bc$Kd490, 0.98, na.rm = TRUE)),
@@ -1909,10 +1941,18 @@ if (length(sp_col) == 0) {
       p_dist <- make_pd_panel(DIST_VAR,        "Distance from river mouth (km)",  log_x = FALSE, show_y = TRUE, back_log10 = (DIST_VAR == "log_dist"))
       p_up    <- make_pd_panel("log_discharge", "River discharge (m³ s⁻¹)", log_x = FALSE, show_y = FALSE, back_log10 = TRUE,
                               nice_pow10 = c(1, 10, 100, 1000, 10000))
-      fig_s3 <- ((p_sal | p_kd) / (p_dist | p_up)) +
-        patchwork::plot_layout(guides = "collect") &
-        theme(legend.position = "bottom")
-      save_fig(fig_s3, "FigS3_ResponseCurves_CI", 130, 110)
+      if (FEAT_SET == "struct") {
+        p_sig  <- make_pd_panel("sigk", "Turbidity residual σk", log_x = FALSE, show_y = FALSE)
+        fig_s3 <- (p_sal | p_sig | p_dist) +
+          patchwork::plot_layout(guides = "collect") &
+          theme(legend.position = "bottom")
+        save_fig(fig_s3, "FigS3_ResponseCurves_CI", 170, 70)
+      } else {
+        fig_s3 <- ((p_sal | p_kd) / (p_dist | p_up)) +
+          patchwork::plot_layout(guides = "collect") &
+          theme(legend.position = "bottom")
+        save_fig(fig_s3, "FigS3_ResponseCurves_CI", 130, 110)
+      }
       message("FigS3_ResponseCurves_CI saved")
     }
   }
@@ -2275,6 +2315,7 @@ world_grid$log_discharge <- log10(pmax(world_grid$discharge_cms, 0) + 1)
 world_grid$log_city     <- log10(world_grid$dist_city_km + 1)
 world_grid$log_tidal    <- log10(world_grid$tidal_m      + 1)
 world_grid$dist_km_baseline <- world_grid$dist_km  # for filtering scenario figures
+world_grid$sigk <- sigk_of(world_grid)
 Xg     <- as.matrix(world_grid[, FEAT]);       colnames(Xg)     <- FEAT
 Xg_rng <- as.matrix(world_grid[, FEAT_range]); colnames(Xg_rng) <- FEAT_range
 for (tp in ECO_LVLS) {
@@ -2453,6 +2494,7 @@ for (sc_name in names(SCENARIOS)) {
   # this line was missing, so dist↑ only returned exactly zero change and the
   # combined scenarios carried the Kd490 pathway alone.)
   wg[[DIST_VAR]] <- km_to_dist(wg$dist_km)
+  wg$sigk <- sigk_of(wg)   # the Kd490 pathway reaches σk the same way
   Xs <- as.matrix(wg[, FEAT]); colnames(Xs) <- FEAT
   for (tp in ECO_LVLS) {
     wg[[paste0("suit_", tp)]] <-
@@ -2542,6 +2584,7 @@ if (exists("sp_models") && length(sp_models) > 0) {
         ) |>
         dplyr::filter(dist_km_baseline <= coast_thresh)
       wg_s[[DIST_VAR]] <- km_to_dist(wg_s$dist_km)   # as in the main scenario loop
+      wg_s$sigk <- sigk_of(wg_s)
       Xw_s <- as.matrix(wg_s[, FEAT]); colnames(Xw_s) <- FEAT
       suit_s <- predict(mx_s, as.data.frame(Xw_s), type = "cloglog") |> as.numeric()
       tibble::tibble(sc_name = sc_name, Type = tp_s, Species = spp_s,
